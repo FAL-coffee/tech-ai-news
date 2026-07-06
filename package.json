@@ -8,6 +8,7 @@
     "collect": "pnpm --filter api collect",
     "classify": "pnpm --filter api classify",
     "generate": "pnpm --filter api generate",
+    "digest": "pnpm --filter api digest",
     "pipeline": "pnpm --filter api pipeline",
     "dev:api": "pnpm --filter api dev",
     "dev:web": "pnpm --filter web dev",

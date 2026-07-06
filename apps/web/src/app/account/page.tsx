@@ -1,8 +1,9 @@
-import { getSubscriptionByUserId, getUserTopicSlugs, listTopics } from "@tech-ai-news/db";
+import { getEmailPreferenceByUserId, getSubscriptionByUserId, getUserTopicSlugs, listTopics } from "@tech-ai-news/db";
 import { isActiveSubscription } from "@tech-ai-news/shared";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { EmailDigestToggle } from "../../components/EmailDigestToggle";
 import { SignOutButton } from "../../components/SignOutButton";
 import { TopicSelector } from "../../components/TopicSelector";
 import { auth } from "../../lib/auth";
@@ -17,10 +18,11 @@ export default async function AccountPage() {
   }
 
   const db = getDb();
-  const [subscription, topics, selectedSlugs] = await Promise.all([
+  const [subscription, topics, selectedSlugs, emailPreference] = await Promise.all([
     getSubscriptionByUserId(db, session.user.id),
     listTopics(db),
     getUserTopicSlugs(db, session.user.id),
+    getEmailPreferenceByUserId(db, session.user.id),
   ]);
 
   const active = isActiveSubscription(subscription?.status);
@@ -66,8 +68,14 @@ export default async function AccountPage() {
 
       <section className="card">
         <h2>興味のあるトピック</h2>
-        <p className="meta">選択したトピックは今後のメールダイジェスト機能で使用されます。</p>
+        <p className="meta">選択したトピックに合わせて新着記事のメールダイジェストを配信します。</p>
         <TopicSelector topics={topics} initialSelected={selectedSlugs} />
+      </section>
+
+      <section className="card">
+        <h2>メール配信</h2>
+        <p className="meta">興味のあるトピックの新着記事をメールでお届けします。いつでも配信停止できます。</p>
+        <EmailDigestToggle initialEnabled={emailPreference?.digestEnabled ?? false} />
       </section>
     </main>
   );

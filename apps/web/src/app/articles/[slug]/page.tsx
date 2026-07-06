@@ -1,5 +1,6 @@
 import { getArticleBySlug, getSubscriptionByUserId } from "@tech-ai-news/db";
 import { isActiveSubscription } from "@tech-ai-news/shared";
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,6 +12,25 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const db = getDb();
+  const article = await getArticleBySlug(db, slug);
+  if (!article) return {};
+
+  return {
+    title: article.title,
+    description: article.summary,
+    alternates: { canonical: `/articles/${article.slug}` },
+    openGraph: {
+      type: "article",
+      title: article.title,
+      description: article.summary,
+      publishedTime: article.publishedAt,
+    },
+  };
 }
 
 export default async function ArticlePage({ params }: PageProps) {

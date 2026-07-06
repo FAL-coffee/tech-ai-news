@@ -73,6 +73,15 @@ export interface Subscription {
   currentPeriodEnd: string | null;
 }
 
+export interface EmailPreference {
+  userId: string;
+  digestEnabled: boolean;
+  consentAt: string | null;
+  unsubscribeToken: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type CandidateStatus = "pending" | "approved" | "rejected";
 
 export interface TrustedDomain {

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { listPublishedArticles } from "@tech-ai-news/db";
 import { ArticleCard } from "../components/ArticleCard";
@@ -7,6 +8,15 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   searchParams: Promise<{ topic?: string }>;
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const { topic } = await searchParams;
+  if (!topic) return {};
+  return {
+    title: `${topic}の記事一覧`,
+    description: `${topic}に関するテック/AIニュースの記事一覧。公式ブログ・公式アカウントなどの一次情報をAIが日本語記事として再構成してお届けします。`,
+  };
 }
 
 export default async function HomePage({ searchParams }: PageProps) {

@@ -8,19 +8,26 @@
     "collect": "tsx scripts/collect.ts",
     "classify": "tsx scripts/classify.ts",
     "generate": "tsx scripts/generate.ts",
+    "digest": "tsx scripts/digest.ts",
     "pipeline": "tsx scripts/pipeline.ts"
   },
   "dependencies": {
     "@hono/node-server": "latest",
+    "@react-email/render": "latest",
     "@tech-ai-news/db": "workspace:*",
     "@tech-ai-news/llm": "workspace:*",
     "@tech-ai-news/shared": "workspace:*",
     "dotenv": "latest",
     "hono": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "resend": "latest",
     "rss-parser": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
     "tsx": "latest",
     "typescript": "latest"
   }

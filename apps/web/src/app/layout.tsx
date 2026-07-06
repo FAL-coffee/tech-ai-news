@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { isAdminEmail } from "../lib/admin";
 import { auth } from "../lib/auth";
+import { appUrl } from "../lib/site";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -15,9 +16,17 @@ const sourceSerif = Source_Serif_4({
   display: "swap",
 });
 
+const SITE_DESCRIPTION = "公式ブログ・公式アカウントなどの一次情報を、AIが日本語記事として再構成してお届けするテック/AIニュースサービス。";
+
 export const metadata: Metadata = {
-  title: "tech-ai-news",
-  description: "テック/AI一次情報のAI記事化サービス(開発中)",
+  metadataBase: new URL(appUrl()),
+  title: { default: "tech/ai news", template: "%s | tech/ai news" },
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    siteName: "tech/ai news",
+    type: "website",
+    locale: "ja_JP",
+  },
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {

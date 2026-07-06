@@ -2,6 +2,7 @@
 import type {
   Article,
   CandidateStatus,
+  EmailPreference,
   RawItem,
   RawItemStatus,
   Source,
@@ -260,6 +261,47 @@ export async function listPublishedArticles(db: Db, opts: ListArticlesOptions = 
         order by a.published_at desc
         limit ${limit}
       `;
+  return rows.map(mapArticle);
+}
+
+export interface DigestArticlesOptions {
+  sinceDate: string;
+  topicSlugs: string[];
+  limit?: number;
+}
+
+/** メールダイジェスト用: 指定日時以降に公開された記事を、トピック指定があればそれに絞って返す。 */
+export async function listArticlesForDigest(db: Db, opts: DigestArticlesOptions): Promise<Article[]> {
+  const limit = opts.limit ?? 10;
+  const rows =
+    opts.topicSlugs.length > 0
+      ? await db`
+          select a.*, array_agg(t.slug) as topic_slugs
+          from articles a
+          join article_topics at2 on at2.article_id = a.id
+          join topics t on t.id = at2.topic_id
+          where a.status = 'published'
+            and a.published_at > ${opts.sinceDate}
+            and a.id in (
+              select at3.article_id from article_topics at3
+              join topics t2 on t2.id = at3.topic_id
+              where t2.slug = any(${opts.topicSlugs})
+            )
+          group by a.id
+          order by a.published_at desc
+          limit ${limit}
+        `
+      : await db`
+          select a.*, array_agg(t.slug) as topic_slugs
+          from articles a
+          left join article_topics at2 on at2.article_id = a.id
+          left join topics t on t.id = at2.topic_id
+          where a.status = 'published'
+            and a.published_at > ${opts.sinceDate}
+          group by a.id
+          order by a.published_at desc
+          limit ${limit}
+        `;
   return rows.map(mapArticle);
 }
 
@@ -555,4 +597,109 @@ export async function rejectTopicCandidate(db: Db, id: string, reviewedBy: strin
     set status = 'rejected', reviewed_by = ${reviewedBy}, reviewed_at = now(), updated_at = now()
     where id = ${id}
   `;
+}
+
+// ---------------------------------------------------------------------------
+// メールダイジェスト配信
+// ---------------------------------------------------------------------------
+
+function mapEmailPreference(row: any): EmailPreference {
+  return {
+    userId: row.user_id,
+    digestEnabled: row.digest_enabled,
+    consentAt: row.consent_at,
+    unsubscribeToken: row.unsubscribe_token,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export async function getEmailPreferenceByUserId(db: Db, userId: string): Promise<EmailPreference | null> {
+  const rows = await db`select * from email_preferences where user_id = ${userId}`;
+  return rows.length > 0 ? mapEmailPreference(rows[0]) : null;
+}
+
+export interface UpsertEmailPreferenceInput {
+  userId: string;
+  digestEnabled: boolean;
+  unsubscribeToken: string;
+}
+
+/**
+ * digest_enabled=trueへの変更時のみ同意日時(consent_at)を記録する(特電法対応の同意証跡)。
+ * すでにconsent_atがある場合は上書きしない(最初の同意日時を保持する)。
+ */
+export async function upsertEmailPreference(db: Db, input: UpsertEmailPreferenceInput): Promise<void> {
+  const consentAt = input.digestEnabled ? new Date().toISOString() : null;
+  await db`
+    insert into email_preferences (user_id, digest_enabled, consent_at, unsubscribe_token)
+    values (${input.userId}, ${input.digestEnabled}, ${consentAt}, ${input.unsubscribeToken})
+    on conflict (user_id) do update set
+      digest_enabled = excluded.digest_enabled,
+      consent_at = coalesce(email_preferences.consent_at, excluded.consent_at),
+      updated_at = now()
+  `;
+}
+
+/** ログイン不要のワンクリック配信停止リンク用。トークンが見つからなければfalse。 */
+export async function setDigestEnabledByToken(db: Db, token: string, enabled: boolean): Promise<boolean> {
+  const rows = await db`
+    update email_preferences set digest_enabled = ${enabled}, updated_at = now()
+    where unsubscribe_token = ${token}
+    returning user_id
+  `;
+  return rows.length > 0;
+}
+
+export interface DigestRecipient {
+  userId: string;
+  email: string;
+  unsubscribeToken: string;
+}
+
+/** 配信停止リストに載っていない、ダイジェスト受信を有効にしているユーザー一覧。 */
+export async function listDigestRecipients(db: Db): Promise<DigestRecipient[]> {
+  const rows = await db`
+    select u.id as user_id, u.email, ep.unsubscribe_token
+    from email_preferences ep
+    join "user" u on u.id = ep.user_id
+    where ep.digest_enabled = true
+      and not exists (select 1 from suppressions s where s.email = u.email)
+  `;
+  return rows.map((row: any) => ({
+    userId: row.user_id,
+    email: row.email,
+    unsubscribeToken: row.unsubscribe_token,
+  }));
+}
+
+/** そのユーザーへの直近の配信日時。一度も送っていなければnull。 */
+export async function getLastDeliveryAt(db: Db, userId: string): Promise<string | null> {
+  const rows = await db`select max(sent_at) as last_sent_at from deliveries where user_id = ${userId}`;
+  return rows[0]?.last_sent_at ?? null;
+}
+
+export interface RecordDeliveryInput {
+  userId: string;
+  articleIds: string[];
+  resendMessageId: string | null;
+}
+
+export async function recordDelivery(db: Db, input: RecordDeliveryInput): Promise<void> {
+  await db`
+    insert into deliveries (user_id, article_ids, resend_message_id)
+    values (${input.userId}, ${input.articleIds}::uuid[], ${input.resendMessageId})
+  `;
+}
+
+export async function addSuppression(db: Db, email: string, reason: string): Promise<void> {
+  await db`
+    insert into suppressions (email, reason) values (${email}, ${reason})
+    on conflict (email) do nothing
+  `;
+}
+
+export async function isSuppressed(db: Db, email: string): Promise<boolean> {
+  const rows = await db`select 1 from suppressions where email = ${email}`;
+  return rows.length > 0;
 }

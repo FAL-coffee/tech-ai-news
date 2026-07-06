@@ -9,6 +9,7 @@ export function SignupForm({ next }: { next: string }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [digestConsent, setDigestConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -17,11 +18,24 @@ export function SignupForm({ next }: { next: string }) {
     setError(null);
     setLoading(true);
     const { error: signUpError } = await authClient.signUp.email({ name, email, password });
-    setLoading(false);
     if (signUpError) {
+      setLoading(false);
       setError(signUpError.message ?? "登録に失敗しました");
       return;
     }
+
+    // メール配信の同意状態を記録する(特電法対応。失敗してもサインアップ自体は成功として続行する)。
+    try {
+      await fetch("/api/email-preferences", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ digestEnabled: digestConsent }),
+      });
+    } catch {
+      // no-op: アカウント画面から後で設定できる
+    }
+
+    setLoading(false);
     router.push(next);
     router.refresh();
   }
@@ -45,6 +59,10 @@ export function SignupForm({ next }: { next: string }) {
           minLength={8}
           required
         />
+      </label>
+      <label className="consent-checkbox">
+        <input type="checkbox" checked={digestConsent} onChange={(e) => setDigestConsent(e.target.checked)} />
+        <span>新着記事のメールダイジェストを受け取る(いつでも配信停止できます)</span>
       </label>
       {error && <p className="form-error">{error}</p>}
       <button type="submit" className="btn btn-primary btn-block" disabled={loading}>

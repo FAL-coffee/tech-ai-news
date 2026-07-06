@@ -620,6 +620,23 @@ form {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
+.consent-checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-family: var(--font-sans);
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.consent-checkbox input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
 .form-error {
   font-family: var(--font-sans);
   color: var(--danger);

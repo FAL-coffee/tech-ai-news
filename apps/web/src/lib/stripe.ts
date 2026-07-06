@@ -17,10 +17,6 @@ export function getStripe(): Stripe {
   return cached;
 }
 
-export function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-}
-
 export function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {

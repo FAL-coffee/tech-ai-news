@@ -3,7 +3,8 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "../../../../lib/auth";
 import { getDb } from "../../../../lib/db";
-import { appUrl, getStripe, requireEnv } from "../../../../lib/stripe";
+import { appUrl } from "../../../../lib/site";
+import { getStripe, requireEnv } from "../../../../lib/stripe";
 
 export async function POST() {
   const session = await auth.api.getSession({ headers: await headers() });
