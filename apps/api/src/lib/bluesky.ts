@@ -33,6 +33,7 @@ export async function fetchBlueskyAuthorFeed(profileUrl: string, limit = 20): Pr
   });
   const res = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?${params}`, {
     headers: { "user-agent": USER_AGENT },
+    signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) {
     throw new Error(`bluesky fetch failed: ${res.status} ${res.statusText}`);

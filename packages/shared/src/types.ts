@@ -44,6 +44,8 @@ export interface Article {
   title: string;
   summary: string;
   body: string;
+  highlight: string;
+  ogImageUrl: string | null;
   originalUrl: string;
   sourceName: string;
   importance: number;

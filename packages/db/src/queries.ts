@@ -53,6 +53,8 @@ function mapArticle(row: any): Article {
     title: row.title,
     summary: row.summary,
     body: row.body,
+    highlight: row.highlight,
+    ogImageUrl: row.og_image_url,
     originalUrl: row.original_url,
     sourceName: row.source_name,
     importance: row.importance,
@@ -192,6 +194,8 @@ export interface NewArticleInput {
   title: string;
   summary: string;
   body: string;
+  highlight: string;
+  ogImageUrl: string | null;
   originalUrl: string;
   sourceName: string;
   importance: number;
@@ -205,9 +209,11 @@ export async function insertArticleWithTopics(db: Db, input: NewArticleInput): P
   return db.begin(async (tx) => {
     const [article] = await tx`
       insert into articles (
-        raw_item_id, slug, title, summary, body, original_url, source_name, importance, model, embedding
+        raw_item_id, slug, title, summary, body, highlight, og_image_url,
+        original_url, source_name, importance, model, embedding
       ) values (
         ${input.rawItemId}, ${input.slug}, ${input.title}, ${input.summary}, ${input.body},
+        ${input.highlight}, ${input.ogImageUrl},
         ${input.originalUrl}, ${input.sourceName}, ${input.importance}, ${input.model},
         ${toVectorLiteral(input.embedding)}::vector
       )

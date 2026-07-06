@@ -39,7 +39,7 @@ export async function fetchFeed(
   if (opts.etag) headers["if-none-match"] = opts.etag;
   if (opts.lastModified) headers["if-modified-since"] = opts.lastModified;
 
-  const res = await fetch(url, { headers });
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
 
   if (res.status === 304) {
     return {

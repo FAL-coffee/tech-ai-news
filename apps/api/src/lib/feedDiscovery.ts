@@ -69,7 +69,7 @@ export async function discoverFeed(domain: string): Promise<DiscoveredFeed | nul
   const baseUrl = `https://${domain}/`;
 
   try {
-    const res = await fetch(baseUrl, { headers: { "user-agent": USER_AGENT } });
+    const res = await fetch(baseUrl, { headers: { "user-agent": USER_AGENT }, signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const html = await res.text();
       const found = findFeedLinkInHtml(html, baseUrl);
@@ -82,7 +82,7 @@ export async function discoverFeed(domain: string): Promise<DiscoveredFeed | nul
   for (const path of CANDIDATE_PATHS) {
     const probeUrl = `https://${domain}${path}`;
     try {
-      const res = await fetch(probeUrl, { headers: { "user-agent": USER_AGENT } });
+      const res = await fetch(probeUrl, { headers: { "user-agent": USER_AGENT }, signal: AbortSignal.timeout(8000) });
       if (!res.ok) continue;
       const contentType = res.headers.get("content-type") ?? "";
       const body = await res.text();

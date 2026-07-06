@@ -31,6 +31,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: article.title,
       description: article.summary,
       publishedTime: article.publishedAt,
+      images: article.ogImageUrl ? [article.ogImageUrl] : undefined,
     },
   };
 }
@@ -50,6 +51,10 @@ export default async function ArticlePage({ params }: PageProps) {
     <main className="page">
       <article className="article-detail">
         <h1>{article.title}</h1>
+        {article.ogImageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={article.ogImageUrl} alt="" className="article-hero-image" />
+        )}
         <p className="meta">
           <span>{article.sourceName}</span>
           <span aria-hidden="true">·</span>
@@ -57,6 +62,13 @@ export default async function ArticlePage({ params }: PageProps) {
           <span aria-hidden="true">·</span>
           <span>{new Date(article.publishedAt).toLocaleDateString("ja-JP")}</span>
         </p>
+
+        {article.highlight && (
+          <div className="highlight-callout">
+            <span className="highlight-label">ワンポイント</span>
+            <span>{article.highlight}</span>
+          </div>
+        )}
 
         {/* 法務ガードレール: 原文リンクと出典を必ず目立つ位置に表示する(docs/spec.md §4, §9) */}
         <p className="source-callout">

@@ -28,6 +28,12 @@ export interface CollectSummary {
   errors: { source: string; message: string }[];
 }
 
+// Cloudflare Workersは1回の実行あたりの外部リクエスト数に上限がある(無料プランは50件)。
+// discoverFeed()はドメインごとに最大10リクエストかかるため、新規ドメインが多いHNスキャン結果を
+// そのまま全件処理すると簡単に上限を超えてしまう。1回の実行で自動検出を試みる新規ドメイン数を
+// 制限し、残りは次回以降の実行に回す(候補自体はfeed未検出のまま先にDBへ記録するので取りこぼさない)。
+const MAX_FEED_DISCOVERY_PER_RUN = 5;
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -112,10 +118,23 @@ async function collectHnSource(db: Db, source: Source, summary: CollectSummary):
   // 信頼済みでない新規ドメインは収集先候補として提案する(コンテンツは収集しない)。
   // 既に候補済み(pending/approved/rejectedいずれか)のドメインは、対象サイトへの
   // 不要なリクエストを避けるためフィード自動検出を再実行しない。
+  let feedDiscoveryAttempts = 0;
   for (const [domain, sampleUrl] of candidateDomains) {
     if (knownCandidateDomains.has(domain)) continue;
+
+    // フィード自動検出(discoverFeed)は1ドメインあたり最大10リクエストかかるため上限を設ける。
+    // 上限に達した後は候補自体をfeed未検出のまま先に記録し、次回以降の実行で再訪した際に埋める。
+    let feed: { url: string; kind: "rss" | "atom" } | null = null;
+    if (feedDiscoveryAttempts < MAX_FEED_DISCOVERY_PER_RUN) {
+      feedDiscoveryAttempts += 1;
+      try {
+        feed = await discoverFeed(domain);
+      } catch (err) {
+        console.warn(`[collect] hn: feed discovery failed for ${domain}: ${(err as Error).message}`);
+      }
+    }
+
     try {
-      const feed = await discoverFeed(domain);
       await upsertSourceCandidate(db, {
         domain,
         sampleUrl,
@@ -124,7 +143,7 @@ async function collectHnSource(db: Db, source: Source, summary: CollectSummary):
       });
       summary.candidatesDiscovered += 1;
     } catch (err) {
-      console.warn(`[collect] hn: failed to process source candidate ${domain}: ${(err as Error).message}`);
+      console.warn(`[collect] hn: failed to record source candidate ${domain}: ${(err as Error).message}`);
     }
     await sleep(300);
   }

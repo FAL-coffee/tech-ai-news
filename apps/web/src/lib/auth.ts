@@ -26,7 +26,12 @@ let cached: Auth | null = null;
  * Cloudflare Workers(OpenNext)ではbindings経由の環境変数がモジュールのトップレベルスコープでは
  * まだ反映されていないため、即座にbetterAuth({...})を評価すると誤った値で初期化されてしまう。
  */
-function getAuth(): Auth {
+/**
+ * betterAuthの実インスタンスをそのまま必要とする呼び出し(toNextJsHandler等、内部でthisバインディングに
+ * 依存する場合がある)はこちらを使う。プロパティアクセスの都度getAuth()を呼ぶProxyでラップすると、
+ * メソッド抽出時にthisが失われて実行時エラーになることがある(実際にサインアップAPIで発生した)。
+ */
+export function getAuth(): Auth {
   if (!cached) {
     cached = createAuth();
   }

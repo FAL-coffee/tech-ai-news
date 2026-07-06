@@ -10,7 +10,7 @@ const USER_AGENT = "tech-ai-news-bot/0.1 (+https://github.com/FAL-coffee/tech-ai
  * 既知の制約: robots.txtは現時点でチェックしていない(既存のRSS収集も同様)。
  */
 export async function fetchPageText(url: string): Promise<string> {
-  const res = await fetch(url, { headers: { "user-agent": USER_AGENT } });
+  const res = await fetch(url, { headers: { "user-agent": USER_AGENT }, signal: AbortSignal.timeout(10000) });
   if (!res.ok) {
     throw new Error(`page fetch failed: ${res.status} ${res.statusText}`);
   }

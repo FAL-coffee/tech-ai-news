@@ -68,6 +68,7 @@ export async function scanHackerNews(
     });
     const res = await fetch(`https://hn.algolia.com/api/v1/search_by_date?${params}`, {
       headers: { "user-agent": USER_AGENT },
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) {
       throw new Error(`hacker news fetch failed: ${res.status} ${res.statusText}`);

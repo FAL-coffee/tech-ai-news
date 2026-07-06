@@ -15,6 +15,7 @@ export interface GeneratedArticle {
   title: string;
   summary: string;
   body: string;
+  highlight: string;
   tags: string[];
 }
 
@@ -56,6 +57,7 @@ export async function generateArticle(
     title: parsed.title,
     summary: parsed.summary,
     body: parsed.body,
+    highlight: parsed.highlight,
     tags: parsed.tags,
   };
 }

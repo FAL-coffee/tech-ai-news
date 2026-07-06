@@ -1,6 +1,7 @@
 ﻿import { createDb, insertArticleWithTopics, listSelectedRawItems, recordRawItemError } from "@tech-ai-news/db";
 import { embedText, generateArticle } from "@tech-ai-news/llm";
 import { env } from "../env";
+import { fetchOgImage } from "../lib/ogImage";
 import { slugify } from "../lib/slug";
 
 export interface GenerateSummary {
@@ -27,7 +28,10 @@ export async function runGenerate(): Promise<GenerateSummary> {
           publishedAt: item.publishedAt,
         });
 
-        const embedding = await embedText(`${article.title}\n${article.summary}`);
+        const [embedding, ogImageUrl] = await Promise.all([
+          embedText(`${article.title}\n${article.summary}`),
+          fetchOgImage(item.externalUrl),
+        ]);
         // slugは生成された日本語タイトルではなく、原文(英語)タイトルから作る(slugifyは非ASCII文字を保持できない)。
         const slug = `${slugify(item.title)}-${item.id.slice(0, 6)}`;
 
@@ -37,6 +41,8 @@ export async function runGenerate(): Promise<GenerateSummary> {
           title: article.title,
           summary: article.summary,
           body: article.body,
+          highlight: article.highlight,
+          ogImageUrl,
           // 法務ガードレール: 原文リンクと出典は必ずDBに保存する(UI側で必ず表示)。
           originalUrl: item.externalUrl,
           sourceName: item.sourceName,

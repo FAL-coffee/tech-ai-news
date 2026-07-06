@@ -41,6 +41,8 @@ export const ArticleLanguageSchema = z.object({
   title: z.string(),
   summary: z.string(),
   body: z.string(),
+  // 記事の最重要ポイントを1文で表す「ワンポイント要約」。記事上部にハイライト表示する。
+  highlight: z.string(),
   tags: z.array(z.string()).min(3).max(6),
 });
 

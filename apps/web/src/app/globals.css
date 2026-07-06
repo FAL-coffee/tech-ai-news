@@ -23,6 +23,11 @@
   --success: #2f6f4e;
   --success-soft: #e9f0ea;
 
+  --highlight-bg: #fce7f3;
+  --highlight-text: #9d174d;
+  --highlight-label-bg: #f9a8d4;
+  --highlight-label-text: #7a1245;
+
   --shadow-sm: 0 1px 2px rgb(28 22 10 / 0.05);
   --shadow-md: 0 6px 20px rgb(28 22 10 / 0.08);
 
@@ -59,6 +64,11 @@
     --danger-soft: #2c1a14;
     --success: #75bd97;
     --success-soft: #17281f;
+
+    --highlight-bg: #4a1942;
+    --highlight-text: #f9a8d4;
+    --highlight-label-bg: #831843;
+    --highlight-label-text: #fbcfe8;
 
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-md: 0 8px 24px rgb(0 0 0 / 0.45);
@@ -283,6 +293,16 @@ h1, h2, h3 {
   padding-top: 0;
 }
 
+.article-card-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2.4 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+
 .article-card h2 {
   font-size: 1.28rem;
   margin: 0 0 0.5rem;
@@ -362,6 +382,59 @@ h1, h2, h3 {
   margin: 1rem 0 0.6rem;
 }
 
+.article-hero-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.91 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  margin-top: 1.25rem;
+}
+
+/* --- ワンポイント要約(ピンクの吹き出し風ハイライト) --- */
+.highlight-callout {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  max-width: 100%;
+  background: var(--highlight-bg);
+  color: var(--highlight-text);
+  border-radius: 16px;
+  padding: 0.9rem 1.15rem;
+  margin: 1.5rem 0 1.9rem;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.highlight-callout::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  bottom: -7px;
+  width: 14px;
+  height: 14px;
+  background: var(--highlight-bg);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.highlight-label {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--highlight-label-bg);
+  color: var(--highlight-label-text);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 .source-callout {
   border-left: 3px solid var(--accent);
   padding: 0.1rem 0 0.1rem 1.1rem;
@@ -413,6 +486,17 @@ h1, h2, h3 {
 
 .article-body li {
   margin-bottom: 0.4rem;
+}
+
+.article-body strong {
+  color: var(--accent);
+  font-weight: 700;
+  box-decoration-break: clone;
+}
+
+.article-body a {
+  font-weight: 600;
+  text-underline-offset: 2px;
 }
 
 .article-body code {

@@ -15,5 +15,8 @@ dist/
 !.dev.vars.example
 .open-next/
 
+# Vercel
+.vercel/
+
 # 個人のローカル設定(Claude Code)
 .claude/settings.local.json
