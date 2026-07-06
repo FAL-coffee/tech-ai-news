@@ -49,12 +49,9 @@ function mapArticle(row: any): Article {
     id: row.id,
     rawItemId: row.raw_item_id,
     slug: row.slug,
-    titleJa: row.title_ja,
-    titleEn: row.title_en,
-    summaryJa: row.summary_ja,
-    summaryEn: row.summary_en,
-    bodyJa: row.body_ja,
-    bodyEn: row.body_en,
+    title: row.title,
+    summary: row.summary,
+    body: row.body,
     originalUrl: row.original_url,
     sourceName: row.source_name,
     importance: row.importance,
@@ -191,12 +188,9 @@ export async function listSelectedRawItems(db: Db, limit: number): Promise<Selec
 export interface NewArticleInput {
   rawItemId: string;
   slug: string;
-  titleJa: string;
-  titleEn: string;
-  summaryJa: string;
-  summaryEn: string;
-  bodyJa: string;
-  bodyEn: string;
+  title: string;
+  summary: string;
+  body: string;
   originalUrl: string;
   sourceName: string;
   importance: number;
@@ -210,11 +204,9 @@ export async function insertArticleWithTopics(db: Db, input: NewArticleInput): P
   return db.begin(async (tx) => {
     const [article] = await tx`
       insert into articles (
-        raw_item_id, slug, title_ja, title_en, summary_ja, summary_en,
-        body_ja, body_en, original_url, source_name, importance, model, embedding
+        raw_item_id, slug, title, summary, body, original_url, source_name, importance, model, embedding
       ) values (
-        ${input.rawItemId}, ${input.slug}, ${input.titleJa}, ${input.titleEn},
-        ${input.summaryJa}, ${input.summaryEn}, ${input.bodyJa}, ${input.bodyEn},
+        ${input.rawItemId}, ${input.slug}, ${input.title}, ${input.summary}, ${input.body},
         ${input.originalUrl}, ${input.sourceName}, ${input.importance}, ${input.model},
         ${toVectorLiteral(input.embedding)}::vector
       )

@@ -27,18 +27,16 @@ export async function runGenerate(): Promise<GenerateSummary> {
           publishedAt: item.publishedAt,
         });
 
-        const embedding = await embedText(`${article.titleEn}\n${article.summaryEn}`);
-        const slug = `${slugify(article.titleEn)}-${item.id.slice(0, 6)}`;
+        const embedding = await embedText(`${article.title}\n${article.summary}`);
+        // slugは生成された日本語タイトルではなく、原文(英語)タイトルから作る(slugifyは非ASCII文字を保持できない)。
+        const slug = `${slugify(item.title)}-${item.id.slice(0, 6)}`;
 
         await insertArticleWithTopics(db, {
           rawItemId: item.id,
           slug,
-          titleJa: article.titleJa,
-          titleEn: article.titleEn,
-          summaryJa: article.summaryJa,
-          summaryEn: article.summaryEn,
-          bodyJa: article.bodyJa,
-          bodyEn: article.bodyEn,
+          title: article.title,
+          summary: article.summary,
+          body: article.body,
           // 法務ガードレール: 原文リンクと出典は必ずDBに保存する(UI側で必ず表示)。
           originalUrl: item.externalUrl,
           sourceName: item.sourceName,

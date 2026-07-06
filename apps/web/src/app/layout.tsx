@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Source_Serif_4 } from "next/font/google";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { isAdminEmail } from "../lib/admin";
@@ -8,6 +8,12 @@ import { auth } from "../lib/auth";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  variable: "--font-source-serif",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "tech-ai-news",
@@ -27,15 +33,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   }
 
   return (
-    <html lang="ja" className={inter.variable}>
+    <html lang="ja" className={`${inter.variable} ${sourceSerif.variable}`}>
       <body>
         <header className="site-header">
           <div className="site-header-inner">
             <Link href="/" className="brand">
-              <span className="brand-mark" aria-hidden="true">
-                AI
-              </span>
-              tech-ai-news
+              tech<span className="brand-accent">/</span>ai<span className="brand-suffix"> news</span>
             </Link>
             <nav className="main-nav">
               <Link href="/pricing" className="nav-link">

@@ -41,12 +41,9 @@ export interface Article {
   id: string;
   rawItemId: string | null;
   slug: string;
-  titleJa: string;
-  titleEn: string;
-  summaryJa: string;
-  summaryEn: string;
-  bodyJa: string;
-  bodyEn: string;
+  title: string;
+  summary: string;
+  body: string;
   originalUrl: string;
   sourceName: string;
   importance: number;
@@ -55,8 +52,6 @@ export interface Article {
   status: "draft" | "published" | "retracted";
   topics?: string[];
 }
-
-export type Lang = "ja" | "en";
 
 export type SubscriptionStatus =
   | "none"

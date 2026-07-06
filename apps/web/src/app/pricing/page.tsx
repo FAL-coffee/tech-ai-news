@@ -51,12 +51,12 @@ export default async function PricingPage() {
             </p>
           ) : session ? (
             <form action="/api/billing/checkout" method="post">
-              <button type="submit" className="btn btn-primary btn-block">
+              <button type="submit" className="btn btn-accent btn-block">
                 登録する
               </button>
             </form>
           ) : (
-            <Link href="/signup?next=/pricing" className="btn btn-primary btn-block">
+            <Link href="/signup?next=/pricing" className="btn btn-accent btn-block">
               新規登録して申し込む
             </Link>
           )}
