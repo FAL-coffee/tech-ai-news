@@ -1,4 +1,4 @@
-export type SourceKind = "rss" | "atom" | "github_releases" | "bluesky" | "newsletter" | "manual";
+export type SourceKind = "rss" | "atom" | "github_releases" | "bluesky" | "newsletter" | "manual" | "hn_domain";
 
 export interface Source {
   id: string;

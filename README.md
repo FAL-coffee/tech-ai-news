@@ -67,7 +67,7 @@ pnpm db:migrate
 pnpm db:seed
 ```
 
-`sources` に検証済み15フィード、`topics` に18トピックが投入されます。あわせて、認証用テーブル(`user`/`session`/`account`/`verification`、better-auth標準スキーマ)と `subscriptions` / `user_topics` テーブルも作成されます。
+`sources` に検証済みの収集先(RSS/Atom 15件、Bluesky公式アカウント10件、Hacker News経由の信頼済みドメイン発見1件、計26件)、`topics` に18トピックが投入されます。あわせて、認証用テーブル(`user`/`session`/`account`/`verification`、better-auth標準スキーマ)と `subscriptions` / `user_topics` テーブルも作成されます。
 
 ### 5. Stripe のセットアップ(要ユーザー操作)
 
@@ -98,6 +98,31 @@ pnpm pipeline
 
 初回は `collect` → `classify` → `generate` の順に実行してください。`generate` はAnthropic/OpenAIのAPI呼び出しが発生します(コストは `docs/spec.md` §7を参照)。
 
+### 収集先の内訳
+
+| 種別(`sources.kind`) | 件数 | 収集方法 |
+|---|---|---|
+| `rss` / `atom` | 12件 | 公式ブログ・ニュースのRSS/Atomフィード(Anthropicのみ公式RSSが無いためコミュニティ生成フィードで代替) |
+| `github_releases` | 4件 | `github.com/{owner}/{repo}/releases.atom`(認証不要) |
+| `bluesky` | 10件 | Bluesky公開API(認証不要)。運用実績のある公式アカウントのみ採用(2026-07-06確認済み) |
+| `hn_domain` | 1件 | Hacker News (Algolia Search API) 経由で、上記の信頼済み公式ドメインにリンクする記事のみを発見する。任意のドメインは拾わない(法務ガードレール、`docs/spec.md` §9) |
+
+収集先を増やす場合はコード変更不要で、`packages/db/seeds/seed.sql` に行を追加して `pnpm db:seed` するだけです(RSS/Atom/GitHub Releases/Bluesky/HN信頼済みドメインいずれも対応済み)。HN経由で発見してよいドメインの許可リストは `apps/api/src/lib/trustedDomains.ts` で管理しています。
+
+### 自動実行(Cronの代替)
+
+現状 Cloudflare Workers 等への実デプロイは未着手のため、`apps/api` プロセス自身が一定間隔で `collect → classify → generate` を自動実行するスケジューラを内蔵しています(`apps/api/src/scheduler.ts`)。
+
+```sh
+# .env で以下を設定してから pnpm dev:api (または本番プロセス) を起動する
+SCHEDULER_ENABLED=true
+COLLECT_INTERVAL_MINUTES=30
+```
+
+- デフォルトは無効です(`SCHEDULER_ENABLED=false`)。誤って有効化したままローカル開発を続けるとLLM API課金が定期的に発生するため、明示的にオプトインする設計にしています。
+- `apps/api` プロセスが起動し続けている間だけ機能します(サーバーレス環境では動きません)。継続稼働できるホスティング(VM、Railway、Fly.io等)であればこのままで十分です。
+- サーバーレス/Cloudflare Workers Cron Triggersへの移行は次フェーズ(下記)。`apps/api/src/app.ts` はNode APIに依存しない設計にしてあるため、移行時は`export default app`をCloudflare Workersのエントリポイントに差し替えるだけで済む想定ですが、`postgres`(postgres.js)がWorkersランタイムでそのまま動くかは未検証です(Hyperdrive等の追加検証が必要)。
+
 ## API / Web の起動
 
 ```sh
@@ -119,9 +144,10 @@ pnpm typecheck
 ## 次フェーズ(未実装)
 
 - Resendによるメールダイジェスト配信(トピック購読済みユーザーへの毎朝の配信)
-- Cloudflare Workersへの実デプロイ・Cron/Queues/Workflowsの配線
+- Cloudflare Workers等サーバーレス環境への実デプロイ・Cron Triggers/Queues/Workflowsへの移行(現状は`apps/api`常駐プロセス内蔵のスケジューラで代替)
 - Batch APIによるLLMコスト最適化
 - `apps/api` のジョブエンドポイント(`/jobs/*`)は現状無認証です。公開デプロイ時はネットワーク制限またはトークン認証を追加してください
+- HN経由の本文取得(`apps/api/src/lib/pageContent.ts`)は簡易的なHTMLタグ除去のみで、robots.txtの確認もしていません。収集先ドメインは信頼済みリストに限定していますが、将来的にはより丁寧な本文抽出が望ましいです
 - スマホアプリ(将来検討。現時点ではWebのみ)
 
 詳細は [`docs/spec.md`](./docs/spec.md) §11(MVPロードマップ)を参照してください。
