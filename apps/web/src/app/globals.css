@@ -442,6 +442,38 @@ h1, h2, h3 {
   color: var(--text-muted);
 }
 
+.share-links {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 1.75rem 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-sans);
+}
+
+.share-links-label {
+  font-size: 0.82rem;
+  color: var(--text-faint);
+}
+
+.share-link {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.75rem;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.share-link:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* --- ペイウォール --- */
 .paywall {
   margin-top: 2.25rem;
@@ -855,6 +887,18 @@ form {
   font-size: 0.85rem;
   color: var(--success);
   font-weight: 600;
+}
+
+.referral-link-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.7rem;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.82rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text-muted);
 }
 
 /* --- admin --- */

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { authClient } from "../lib/auth-client";
 
-export function SignupForm({ next }: { next: string }) {
+export function SignupForm({ next, referrerUserId }: { next: string; referrerUserId?: string }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -24,7 +24,7 @@ export function SignupForm({ next }: { next: string }) {
       return;
     }
 
-    // メール配信の同意状態を記録する(特電法対応。失敗してもサインアップ自体は成功として続行する)。
+    // メール配信の同意状態・紹介元の記録は、失敗してもサインアップ自体は成功として続行する。
     try {
       await fetch("/api/email-preferences", {
         method: "POST",
@@ -33,6 +33,18 @@ export function SignupForm({ next }: { next: string }) {
       });
     } catch {
       // no-op: アカウント画面から後で設定できる
+    }
+
+    if (referrerUserId) {
+      try {
+        await fetch("/api/referrals", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ referrerUserId }),
+        });
+      } catch {
+        // no-op: 紹介トライアル延長のみを失う。サインアップ自体は継続する
+      }
     }
 
     setLoading(false);

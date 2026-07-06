@@ -5,8 +5,10 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
+import { ShareLinks } from "../../../components/ShareLinks";
 import { auth } from "../../../lib/auth";
 import { getDb } from "../../../lib/db";
+import { appUrl } from "../../../lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +65,8 @@ export default async function ArticlePage({ params }: PageProps) {
             原文を読む →
           </a>
         </p>
+
+        <ShareLinks url={`${appUrl()}/articles/${article.slug}`} title={article.title} />
 
         {canReadFull ? (
           <div className="article-body">

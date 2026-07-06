@@ -703,3 +703,26 @@ export async function isSuppressed(db: Db, email: string): Promise<boolean> {
   const rows = await db`select 1 from suppressions where email = ${email}`;
   return rows.length > 0;
 }
+
+// ---------------------------------------------------------------------------
+// 紹介プログラム
+// ---------------------------------------------------------------------------
+
+/** 被紹介者は1回しか紹介元を持てない(既に記録済みなら無視)。 */
+export async function recordReferral(db: Db, refereeUserId: string, referrerUserId: string): Promise<void> {
+  await db`
+    insert into referrals (referee_user_id, referrer_user_id)
+    values (${refereeUserId}, ${referrerUserId})
+    on conflict (referee_user_id) do nothing
+  `;
+}
+
+export async function getReferrerUserId(db: Db, refereeUserId: string): Promise<string | null> {
+  const rows = await db`select referrer_user_id from referrals where referee_user_id = ${refereeUserId}`;
+  return rows[0]?.referrer_user_id ?? null;
+}
+
+export async function countReferralsByReferrer(db: Db, referrerUserId: string): Promise<number> {
+  const rows = await db`select count(*)::int as count from referrals where referrer_user_id = ${referrerUserId}`;
+  return rows[0]?.count ?? 0;
+}

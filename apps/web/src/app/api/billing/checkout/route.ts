@@ -1,10 +1,12 @@
-import { getSubscriptionByUserId } from "@tech-ai-news/db";
+import { getReferrerUserId, getSubscriptionByUserId } from "@tech-ai-news/db";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "../../../../lib/auth";
 import { getDb } from "../../../../lib/db";
 import { appUrl } from "../../../../lib/site";
 import { getStripe, requireEnv } from "../../../../lib/stripe";
+
+const REFERRAL_TRIAL_PERIOD_DAYS = 30;
 
 export async function POST() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -13,10 +15,16 @@ export async function POST() {
   }
 
   const db = getDb();
-  const existing = await getSubscriptionByUserId(db, session.user.id);
+  const [existing, referrerUserId] = await Promise.all([
+    getSubscriptionByUserId(db, session.user.id),
+    getReferrerUserId(db, session.user.id),
+  ]);
   const stripe = getStripe();
 
-  const trialPeriodDays = Number(process.env.TRIAL_PERIOD_DAYS ?? 14);
+  // 友達紹介経由で登録したユーザーには、通常より長い無料トライアルを付与する。
+  const trialPeriodDays = referrerUserId
+    ? REFERRAL_TRIAL_PERIOD_DAYS
+    : Number(process.env.TRIAL_PERIOD_DAYS ?? 14);
 
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "subscription",

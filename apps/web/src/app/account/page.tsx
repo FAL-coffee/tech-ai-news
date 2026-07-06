@@ -1,13 +1,21 @@
-import { getEmailPreferenceByUserId, getSubscriptionByUserId, getUserTopicSlugs, listTopics } from "@tech-ai-news/db";
+import {
+  countReferralsByReferrer,
+  getEmailPreferenceByUserId,
+  getSubscriptionByUserId,
+  getUserTopicSlugs,
+  listTopics,
+} from "@tech-ai-news/db";
 import { isActiveSubscription } from "@tech-ai-news/shared";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EmailDigestToggle } from "../../components/EmailDigestToggle";
+import { ReferralLink } from "../../components/ReferralLink";
 import { SignOutButton } from "../../components/SignOutButton";
 import { TopicSelector } from "../../components/TopicSelector";
 import { auth } from "../../lib/auth";
 import { getDb } from "../../lib/db";
+import { appUrl } from "../../lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -18,11 +26,12 @@ export default async function AccountPage() {
   }
 
   const db = getDb();
-  const [subscription, topics, selectedSlugs, emailPreference] = await Promise.all([
+  const [subscription, topics, selectedSlugs, emailPreference, referralCount] = await Promise.all([
     getSubscriptionByUserId(db, session.user.id),
     listTopics(db),
     getUserTopicSlugs(db, session.user.id),
     getEmailPreferenceByUserId(db, session.user.id),
+    countReferralsByReferrer(db, session.user.id),
   ]);
 
   const active = isActiveSubscription(subscription?.status);
@@ -76,6 +85,14 @@ export default async function AccountPage() {
         <h2>メール配信</h2>
         <p className="meta">興味のあるトピックの新着記事をメールでお届けします。いつでも配信停止できます。</p>
         <EmailDigestToggle initialEnabled={emailPreference?.digestEnabled ?? false} />
+      </section>
+
+      <section className="card">
+        <h2>友達を紹介</h2>
+        <p className="meta">
+          このリンクから登録した友達は無料トライアルが30日間になります。これまでの紹介人数: {referralCount}人
+        </p>
+        <ReferralLink url={`${appUrl()}/signup?ref=${session.user.id}`} />
       </section>
     </main>
   );
