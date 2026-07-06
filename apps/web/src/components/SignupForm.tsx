@@ -47,7 +47,7 @@ export function SignupForm({ next }: { next: string }) {
         />
       </label>
       {error && <p className="form-error">{error}</p>}
-      <button type="submit" disabled={loading}>
+      <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
         {loading ? "登録中..." : "登録する"}
       </button>
     </form>

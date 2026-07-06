@@ -10,11 +10,19 @@ export interface ClassifyInput {
   contentText: string;
 }
 
+export interface SuggestedTopic {
+  slug: string;
+  nameJa: string;
+  nameEn: string;
+  reason: string;
+}
+
 export interface ClassificationResult {
   importance: number;
   worthArticle: boolean;
   topics: { slug: string; score: number }[];
   reason: string;
+  suggestedTopic: SuggestedTopic | null;
 }
 
 const MAX_CONTENT_CHARS = 4000;
@@ -57,5 +65,13 @@ export async function classifyItem(
     worthArticle: parsed.worth_article,
     topics: parsed.topics,
     reason: parsed.reason,
+    suggestedTopic: parsed.suggested_topic
+      ? {
+          slug: parsed.suggested_topic.slug,
+          nameJa: parsed.suggested_topic.name_ja,
+          nameEn: parsed.suggested_topic.name_en,
+          reason: parsed.suggested_topic.reason,
+        }
+      : null,
   };
 }

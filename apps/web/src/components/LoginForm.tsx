@@ -36,7 +36,7 @@ export function LoginForm({ next }: { next: string }) {
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
       </label>
       {error && <p className="form-error">{error}</p>}
-      <button type="submit" disabled={loading}>
+      <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
         {loading ? "ログイン中..." : "ログイン"}
       </button>
     </form>

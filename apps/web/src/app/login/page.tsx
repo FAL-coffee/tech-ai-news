@@ -9,12 +9,16 @@ export default async function LoginPage({ searchParams }: PageProps) {
   const { next } = await searchParams;
 
   return (
-    <main>
-      <h1>ログイン</h1>
-      <LoginForm next={next ?? "/account"} />
-      <p>
-        アカウントをお持ちでない方は <Link href={`/signup${next ? `?next=${encodeURIComponent(next)}` : ""}`}>新規登録</Link>
-      </p>
+    <main className="page auth-page">
+      <div className="auth-card">
+        <h1>ログイン</h1>
+        <p className="auth-subtitle">アカウントにログインして続きを読みましょう</p>
+        <LoginForm next={next ?? "/account"} />
+        <p className="auth-footer">
+          アカウントをお持ちでない方は{" "}
+          <Link href={`/signup${next ? `?next=${encodeURIComponent(next)}` : ""}`}>新規登録</Link>
+        </p>
+      </div>
     </main>
   );
 }

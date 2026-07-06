@@ -1,5 +1,16 @@
 ﻿import type { Db } from "./index";
-import type { Article, RawItem, RawItemStatus, Source, Subscription, SubscriptionStatus, Topic } from "@tech-ai-news/shared";
+import type {
+  Article,
+  CandidateStatus,
+  RawItem,
+  RawItemStatus,
+  Source,
+  SourceCandidate,
+  Subscription,
+  SubscriptionStatus,
+  Topic,
+  TopicCandidate,
+} from "@tech-ai-news/shared";
 
 function mapSource(row: any): Source {
   return {
@@ -347,4 +358,209 @@ export async function setUserTopics(db: Db, userId: string, topicSlugs: string[]
       `;
     }
   });
+}
+
+// ---------------------------------------------------------------------------
+// 収集先候補・タグ候補(半自動発見+承認フロー)
+// ---------------------------------------------------------------------------
+
+export async function listTrustedDomains(db: Db): Promise<string[]> {
+  const rows = await db<{ domain: string }[]>`select domain from trusted_domains`;
+  return rows.map((r) => r.domain);
+}
+
+export async function addTrustedDomain(db: Db, domain: string, note?: string): Promise<void> {
+  await db`
+    insert into trusted_domains (domain, note)
+    values (${domain}, ${note ?? null})
+    on conflict (domain) do nothing
+  `;
+}
+
+/**
+ * 既にsource_candidatesに存在する(pending/approved/rejectedいずれか)ドメインの一覧。
+ * HN scan時にフィード自動検出を再実行すべきでない(=既知の)ドメインを判定するために使う。
+ */
+export async function listKnownCandidateDomains(db: Db): Promise<Set<string>> {
+  const rows = await db<{ domain: string }[]>`select domain from source_candidates`;
+  return new Set(rows.map((r) => r.domain));
+}
+
+function mapSourceCandidate(row: any): SourceCandidate {
+  return {
+    id: row.id,
+    domain: row.domain,
+    discoveryCount: row.discovery_count,
+    sampleUrls: row.sample_urls ?? [],
+    detectedFeedUrl: row.detected_feed_url,
+    detectedFeedKind: row.detected_feed_kind,
+    status: row.status,
+    resultingSourceId: row.resulting_source_id,
+    reviewedBy: row.reviewed_by,
+    reviewedAt: row.reviewed_at,
+    createdAt: row.created_at,
+  };
+}
+
+export interface UpsertSourceCandidateInput {
+  domain: string;
+  sampleUrl: string;
+  detectedFeedUrl?: string | null;
+  detectedFeedKind?: "rss" | "atom" | null;
+}
+
+/**
+ * 既にpending以外(approved/rejected)の候補は更新しない(再提案で復活させない)。
+ * sample_urlsは直近5件までに絞る。
+ */
+export async function upsertSourceCandidate(db: Db, input: UpsertSourceCandidateInput): Promise<void> {
+  await db`
+    insert into source_candidates (domain, discovery_count, sample_urls, detected_feed_url, detected_feed_kind)
+    values (${input.domain}, 1, array[${input.sampleUrl}]::text[], ${input.detectedFeedUrl ?? null}, ${input.detectedFeedKind ?? null})
+    on conflict (domain) do update set
+      discovery_count = source_candidates.discovery_count + 1,
+      sample_urls = (
+        select array_agg(t.url) from (
+          select u.url from unnest(array_append(source_candidates.sample_urls, ${input.sampleUrl}))
+            with ordinality as u(url, ord)
+          order by u.ord desc
+          limit 5
+        ) t
+      ),
+      detected_feed_url = coalesce(source_candidates.detected_feed_url, ${input.detectedFeedUrl ?? null}),
+      detected_feed_kind = coalesce(source_candidates.detected_feed_kind, ${input.detectedFeedKind ?? null}),
+      updated_at = now()
+    where source_candidates.status = 'pending'
+  `;
+}
+
+export async function listSourceCandidates(db: Db, status: CandidateStatus): Promise<SourceCandidate[]> {
+  const rows = await db`
+    select * from source_candidates where status = ${status} order by discovery_count desc, created_at desc
+  `;
+  return rows.map(mapSourceCandidate);
+}
+
+/** 承認: trusted_domainsへ追加し、フィード自動検出できていればsourcesにも登録する。 */
+export async function approveSourceCandidate(
+  db: Db,
+  id: string,
+  reviewedBy: string,
+): Promise<{ sourceId: string | null }> {
+  return db.begin(async (tx) => {
+    const [candidate] = await tx`select * from source_candidates where id = ${id}`;
+    if (!candidate) {
+      throw new Error(`source candidate not found: ${id}`);
+    }
+
+    await tx`
+      insert into trusted_domains (domain, note)
+      values (${candidate.domain}, 'Hacker News経由の発見から承認')
+      on conflict (domain) do nothing
+    `;
+
+    let sourceId: string | null = null;
+    if (candidate.detected_feed_url) {
+      const [source] = await tx`
+        insert into sources (name, kind, url)
+        values (${candidate.domain}, ${candidate.detected_feed_kind ?? "rss"}, ${candidate.detected_feed_url})
+        on conflict (url) do update set enabled = true
+        returning id
+      `;
+      sourceId = source.id;
+    }
+
+    await tx`
+      update source_candidates
+      set status = 'approved', resulting_source_id = ${sourceId}, reviewed_by = ${reviewedBy}, reviewed_at = now(), updated_at = now()
+      where id = ${id}
+    `;
+
+    return { sourceId };
+  });
+}
+
+export async function rejectSourceCandidate(db: Db, id: string, reviewedBy: string): Promise<void> {
+  await db`
+    update source_candidates
+    set status = 'rejected', reviewed_by = ${reviewedBy}, reviewed_at = now(), updated_at = now()
+    where id = ${id}
+  `;
+}
+
+function mapTopicCandidate(row: any): TopicCandidate {
+  return {
+    id: row.id,
+    slug: row.slug,
+    nameJa: row.name_ja,
+    nameEn: row.name_en,
+    reason: row.reason,
+    occurrenceCount: row.occurrence_count,
+    status: row.status,
+    resultingTopicId: row.resulting_topic_id,
+    reviewedBy: row.reviewed_by,
+    reviewedAt: row.reviewed_at,
+    createdAt: row.created_at,
+  };
+}
+
+export interface UpsertTopicCandidateInput {
+  slug: string;
+  nameJa: string;
+  nameEn: string;
+  reason?: string | null;
+}
+
+export async function upsertTopicCandidate(db: Db, input: UpsertTopicCandidateInput): Promise<void> {
+  await db`
+    insert into topic_candidates (slug, name_ja, name_en, reason)
+    values (${input.slug}, ${input.nameJa}, ${input.nameEn}, ${input.reason ?? null})
+    on conflict (slug) do update set
+      occurrence_count = topic_candidates.occurrence_count + 1,
+      updated_at = now()
+    where topic_candidates.status = 'pending'
+  `;
+}
+
+export async function listTopicCandidates(db: Db, status: CandidateStatus): Promise<TopicCandidate[]> {
+  const rows = await db`
+    select * from topic_candidates where status = ${status} order by occurrence_count desc, created_at desc
+  `;
+  return rows.map(mapTopicCandidate);
+}
+
+export async function approveTopicCandidate(
+  db: Db,
+  id: string,
+  reviewedBy: string,
+): Promise<{ topicId: string }> {
+  return db.begin(async (tx) => {
+    const [candidate] = await tx`select * from topic_candidates where id = ${id}`;
+    if (!candidate) {
+      throw new Error(`topic candidate not found: ${id}`);
+    }
+
+    const [topic] = await tx`
+      insert into topics (slug, name_ja, name_en)
+      values (${candidate.slug}, ${candidate.name_ja}, ${candidate.name_en})
+      on conflict (slug) do update set name_ja = excluded.name_ja
+      returning id
+    `;
+
+    await tx`
+      update topic_candidates
+      set status = 'approved', resulting_topic_id = ${topic.id}, reviewed_by = ${reviewedBy}, reviewed_at = now(), updated_at = now()
+      where id = ${id}
+    `;
+
+    return { topicId: topic.id };
+  });
+}
+
+export async function rejectTopicCandidate(db: Db, id: string, reviewedBy: string): Promise<void> {
+  await db`
+    update topic_candidates
+    set status = 'rejected', reviewed_by = ${reviewedBy}, reviewed_at = now(), updated_at = now()
+    where id = ${id}
+  `;
 }

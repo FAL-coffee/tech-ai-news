@@ -11,8 +11,13 @@ export function ArticleCard({ article, lang }: { article: Article; lang: Lang })
         <Link href={`/articles/${article.slug}?lang=${lang}`}>{title}</Link>
       </h2>
       <p className="meta">
-        {article.sourceName} · {lang === "ja" ? "重要度" : "importance"} {article.importance} ·{" "}
-        {new Date(article.publishedAt).toLocaleDateString(lang === "ja" ? "ja-JP" : "en-US")}
+        <span>{article.sourceName}</span>
+        <span aria-hidden="true">·</span>
+        <span>
+          {lang === "ja" ? "重要度" : "importance"} {article.importance}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span>{new Date(article.publishedAt).toLocaleDateString(lang === "ja" ? "ja-JP" : "en-US")}</span>
       </p>
       <p>{summary}</p>
       {article.topics && article.topics.length > 0 && (

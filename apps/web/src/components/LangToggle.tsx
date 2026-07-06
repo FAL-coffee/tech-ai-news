@@ -3,7 +3,7 @@ import type { Lang } from "@tech-ai-news/shared";
 
 export function LangToggle({ lang }: { lang: Lang }) {
   return (
-    <nav className="lang-toggle">
+    <nav className="lang-switch">
       <Link href="/?lang=ja" aria-current={lang === "ja" ? "page" : undefined}>
         日本語
       </Link>

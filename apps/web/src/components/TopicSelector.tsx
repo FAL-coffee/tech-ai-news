@@ -31,18 +31,20 @@ export function TopicSelector({ topics, initialSelected }: { topics: Topic[]; in
 
   return (
     <div>
-      <div className="topics">
+      <div className="topic-chip-grid">
         {topics.map((topic) => (
-          <label key={topic.slug} className="topic-checkbox">
+          <label key={topic.slug} className="topic-chip" data-selected={selected.has(topic.slug)}>
             <input type="checkbox" checked={selected.has(topic.slug)} onChange={() => toggle(topic.slug)} />
             {topic.nameJa}
           </label>
         ))}
       </div>
-      <button type="button" onClick={save} disabled={isPending}>
-        {isPending ? "保存中..." : "保存"}
-      </button>
-      {saved && !isPending && <span> 保存しました</span>}
+      <div className="topic-save-row">
+        <button type="button" className="btn btn-primary" onClick={save} disabled={isPending}>
+          {isPending ? "保存中..." : "保存"}
+        </button>
+        {saved && !isPending && <span className="topic-save-confirm">保存しました</span>}
+      </div>
     </div>
   );
 }

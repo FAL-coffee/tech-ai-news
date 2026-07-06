@@ -77,3 +77,39 @@ export interface Subscription {
   plan: string;
   currentPeriodEnd: string | null;
 }
+
+export type CandidateStatus = "pending" | "approved" | "rejected";
+
+export interface TrustedDomain {
+  domain: string;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface SourceCandidate {
+  id: string;
+  domain: string;
+  discoveryCount: number;
+  sampleUrls: string[];
+  detectedFeedUrl: string | null;
+  detectedFeedKind: "rss" | "atom" | null;
+  status: CandidateStatus;
+  resultingSourceId: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface TopicCandidate {
+  id: string;
+  slug: string;
+  nameJa: string;
+  nameEn: string;
+  reason: string | null;
+  occurrenceCount: number;
+  status: CandidateStatus;
+  resultingTopicId: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}

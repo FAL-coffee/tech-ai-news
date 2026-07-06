@@ -26,36 +26,45 @@ export default async function AccountPage() {
   const active = isActiveSubscription(subscription?.status);
 
   return (
-    <main>
-      <div className="header">
-        <h1>アカウント</h1>
+    <main className="page">
+      <div className="account-header">
+        <h1 className="hero-title">アカウント</h1>
         <SignOutButton />
       </div>
-      <p>{session.user.email}</p>
+      <p className="account-email">{session.user.email}</p>
 
-      <section>
+      <section className="card">
         <h2>プラン</h2>
         {active ? (
           <>
-            <p>現在のプラン: 有料会員(ステータス: {subscription?.status})</p>
+            <span className="status-badge status-badge-active">有料会員 · {subscription?.status}</span>
             {subscription?.currentPeriodEnd && (
               <p className="meta">
                 次回更新日: {new Date(subscription.currentPeriodEnd).toLocaleDateString("ja-JP")}
               </p>
             )}
-            <form action="/api/billing/portal" method="post">
-              <button type="submit">お支払い方法・請求情報を管理</button>
-            </form>
+            <div className="card-actions">
+              <form action="/api/billing/portal" method="post">
+                <button type="submit" className="btn btn-secondary">
+                  お支払い方法・請求情報を管理
+                </button>
+              </form>
+            </div>
           </>
         ) : (
           <>
-            <p>現在、無料プランです。全文記事を読むには有料プランへの登録が必要です。</p>
-            <Link href="/pricing">プランを見る</Link>
+            <span className="status-badge status-badge-inactive">無料プラン</span>
+            <p className="meta">全文記事を読むには有料プランへの登録が必要です。</p>
+            <div className="card-actions">
+              <Link href="/pricing" className="btn btn-primary">
+                プランを見る
+              </Link>
+            </div>
           </>
         )}
       </section>
 
-      <section>
+      <section className="card">
         <h2>興味のあるトピック</h2>
         <p className="meta">選択したトピックは今後のメールダイジェスト機能で使用されます。</p>
         <TopicSelector topics={topics} initialSelected={selectedSlugs} />

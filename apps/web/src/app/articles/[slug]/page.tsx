@@ -33,25 +33,38 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   const body = lang === "ja" ? article.bodyJa : article.bodyEn;
 
   return (
-    <main>
-      <LangToggle lang={lang} />
+    <main className="page">
+      <div className="article-detail-header">
+        <LangToggle lang={lang} />
+      </div>
       <article className="article-detail">
         <h1>{title}</h1>
         <p className="meta">
-          {article.sourceName} · {lang === "ja" ? "重要度" : "importance"} {article.importance} ·{" "}
-          {new Date(article.publishedAt).toLocaleDateString(lang === "ja" ? "ja-JP" : "en-US")}
+          <span>{article.sourceName}</span>
+          <span aria-hidden="true">·</span>
+          <span>
+            {lang === "ja" ? "重要度" : "importance"} {article.importance}
+          </span>
+          <span aria-hidden="true">·</span>
+          <span>{new Date(article.publishedAt).toLocaleDateString(lang === "ja" ? "ja-JP" : "en-US")}</span>
         </p>
 
         {/* 法務ガードレール: 原文リンクと出典を必ず目立つ位置に表示する(docs/spec.md §4, §9) */}
-        <p className="source-callout">
-          {lang === "ja" ? "この記事は " : "This article is based on "}
-          <strong>{article.sourceName}</strong>
-          {lang === "ja" ? " の一次情報をもとにAIが再構成したものです。" : ", written by AI from primary-source material."}
-          {" "}
-          <a href={article.originalUrl} target="_blank" rel="noopener noreferrer">
-            {lang === "ja" ? "原文を読む →" : "Read the original →"}
-          </a>
-        </p>
+        <div className="source-callout">
+          <span className="source-callout-icon" aria-hidden="true">
+            i
+          </span>
+          <span>
+            {lang === "ja" ? "この記事は " : "This article is based on "}
+            <strong>{article.sourceName}</strong>
+            {lang === "ja"
+              ? " の一次情報をもとにAIが再構成したものです。"
+              : ", written by AI from primary-source material."}{" "}
+            <a href={article.originalUrl} target="_blank" rel="noopener noreferrer">
+              {lang === "ja" ? "原文を読む →" : "Read the original →"}
+            </a>
+          </span>
+        </div>
 
         {canReadFull ? (
           <div className="article-body">
@@ -67,7 +80,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   : "Subscribe to read the full article."}
               </p>
               <Link href="/pricing" className="paywall-button">
-                {lang === "ja" ? "プランを見る" : "See pricing"}
+                {lang === "ja" ? "プランを見る →" : "See pricing →"}
               </Link>
             </div>
           </div>

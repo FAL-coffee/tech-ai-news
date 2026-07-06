@@ -2,7 +2,7 @@
 
 テック/AI一次情報(公式ブログ・GitHub Releases等)を収集し、AIで日本語・英語の記事を生成して配信するサービス。
 
-**Phase 1(収集→分類→生成パイプライン + 閲覧用Web)+ Phase 2(認証・Stripe課金・トピック購読・記事ペイウォール)を実装済み**です。メール配信(Resend)・実デプロイ(Cloudflare Workers等)・Cron配線は未実装です。詳細な仕様・調査は [`docs/spec.md`](./docs/spec.md) を参照してください。
+**Phase 1(収集→分類→生成パイプライン + 閲覧用Web)+ Phase 2(認証・Stripe課金・トピック購読・記事ペイウォール)+ Phase 3(自動実行スケジューラ・収集先/タグ候補の自動発見と承認画面)を実装済み**です。メール配信(Resend)・実デプロイ(Cloudflare Workers等)は未実装です。詳細な仕様・調査は [`docs/spec.md`](./docs/spec.md) を参照してください。
 
 ## 構成
 
@@ -55,6 +55,7 @@ cp .env.example .env
 | `STRIPE_SECRET_KEY` | Stripeダッシュボード([dashboard.stripe.com](https://dashboard.stripe.com/apikeys))から取得するシークレットキー |
 | `STRIPE_WEBHOOK_SECRET` | Stripe CLIまたはダッシュボードのWebhookエンドポイント設定から取得(後述) |
 | `STRIPE_PRICE_ID` | 月額プランの価格ID。**未取得の場合は後述の `pnpm stripe:setup` で自動作成できます** |
+| `ADMIN_EMAILS` | 収集先候補・タグ候補の承認画面(`/admin`)へのアクセスを許可するメールアドレス(カンマ区切り)。未設定の場合`/admin`は誰からもアクセスできません |
 
 `CLASSIFY_MODEL` / `GENERATE_MODEL` / `EMBEDDING_MODEL` / `IMPORTANCE_THRESHOLD` / `MAX_GENERATE_PER_RUN` / `NEXT_PUBLIC_APP_URL` / `TRIAL_PERIOD_DAYS` 等はデフォルト値のままで動作します(調整用に上書き可能)。
 
@@ -107,7 +108,16 @@ pnpm pipeline
 | `bluesky` | 10件 | Bluesky公開API(認証不要)。運用実績のある公式アカウントのみ採用(2026-07-06確認済み) |
 | `hn_domain` | 1件 | Hacker News (Algolia Search API) 経由で、上記の信頼済み公式ドメインにリンクする記事のみを発見する。任意のドメインは拾わない(法務ガードレール、`docs/spec.md` §9) |
 
-収集先を増やす場合はコード変更不要で、`packages/db/seeds/seed.sql` に行を追加して `pnpm db:seed` するだけです(RSS/Atom/GitHub Releases/Bluesky/HN信頼済みドメインいずれも対応済み)。HN経由で発見してよいドメインの許可リストは `apps/api/src/lib/trustedDomains.ts` で管理しています。
+収集先を増やす場合はコード変更不要で、`packages/db/seeds/seed.sql` に行を追加して `pnpm db:seed` するだけです(RSS/Atom/GitHub Releases/Bluesky/HN信頼済みドメインいずれも対応済み)。HN経由で発見してよいドメインの許可リストはDBの `trusted_domains` テーブルで管理しています(初期値は`0007_discovery.sql`でシード)。
+
+### 収集先・タグ候補の自動発見と承認
+
+`collect`(HNスキャン)と`classify`(LLM分類)は、既存の収集先・トピックでは拾えない新しい情報源やテーマを検出すると、それを**候補として保存するだけ**で、承認されるまで収集・記事化には一切使いません(法務ガードレール、`docs/spec.md` §9)。
+
+- **収集先候補**: HN経由で信頼済みドメイン以外のリンクが見つかると、明示的な除外リスト(`apps/api/src/lib/domainDenylist.ts`。報道メディア等の一次情報でないサイトを含む)でフィルタした上で`source_candidates`に記録し、フィード自動検出(`apps/api/src/lib/feedDiscovery.ts`)を試みます。
+- **タグ候補**: 分類LLMが既存のどのトピックスラッグにも合わないと判断した場合、新規トピックを`topic_candidates`に提案します。
+
+いずれも `/admin`(`ADMIN_EMAILS`で許可したメールアドレスのみアクセス可)の承認画面で人間が確認し、承認すると初めて`trusted_domains`/`sources`または`topics`に反映されます。却下した候補は再提案されません。
 
 ### 自動実行(Cronの代替)
 

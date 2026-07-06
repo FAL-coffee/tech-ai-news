@@ -11,6 +11,13 @@ function nonEmptyTuple(values: string[]): [string, ...string[]] {
  * topicSlugs はソートしてから enum を構築する — structured outputs のスキーマは
  * バイト単位で一致した場合のみ24時間キャッシュが効くため、呼び出しごとの順序を安定させる。
  */
+const TopicSuggestionSchema = z.object({
+  slug: z.string(),
+  name_ja: z.string(),
+  name_en: z.string(),
+  reason: z.string(),
+});
+
 export function buildClassificationSchema(topicSlugs: string[]) {
   const sorted = [...topicSlugs].sort();
   return z.object({
@@ -25,6 +32,8 @@ export function buildClassificationSchema(topicSlugs: string[]) {
       )
       .max(5),
     reason: z.string(),
+    // 既存トピックのどれも合わない場合にのみ、新規トピックの候補を提案する(合わなければnull)。
+    suggested_topic: TopicSuggestionSchema.nullable(),
   });
 }
 
