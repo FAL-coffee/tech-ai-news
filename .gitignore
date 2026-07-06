@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.local
+.next/
+dist/
+*.log
+.turbo/
+.DS_Store
+*.tsbuildinfo
+
+# 個人のローカル設定(Claude Code)
+.claude/settings.local.json

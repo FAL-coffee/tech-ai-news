@@ -1,0 +1,19 @@
+{
+  "name": "tech-ai-news",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "db:migrate": "pnpm --filter @tech-ai-news/db migrate",
+    "db:seed": "pnpm --filter @tech-ai-news/db seed",
+    "collect": "pnpm --filter api collect",
+    "classify": "pnpm --filter api classify",
+    "generate": "pnpm --filter api generate",
+    "pipeline": "pnpm --filter api pipeline",
+    "dev:api": "pnpm --filter api dev",
+    "dev:web": "pnpm --filter web dev",
+    "typecheck": "pnpm -r exec tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "latest"
+  }
+}
