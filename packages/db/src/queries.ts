@@ -1,5 +1,5 @@
 ﻿import type { Db } from "./index";
-import type { Article, RawItem, RawItemStatus, Source } from "@tech-ai-news/shared";
+import type { Article, RawItem, RawItemStatus, Source, Subscription, SubscriptionStatus, Topic } from "@tech-ai-news/shared";
 
 function mapSource(row: any): Source {
   return {
@@ -270,4 +270,81 @@ export async function getArticleBySlug(db: Db, slug: string): Promise<Article | 
     group by a.id
   `;
   return rows.length > 0 ? mapArticle(rows[0]) : null;
+}
+
+export async function listTopics(db: Db): Promise<Topic[]> {
+  const rows = await db`select * from topics order by slug`;
+  return rows.map((row: any) => ({
+    id: row.id,
+    slug: row.slug,
+    nameJa: row.name_ja,
+    nameEn: row.name_en,
+  }));
+}
+
+function mapSubscription(row: any): Subscription {
+  return {
+    userId: row.user_id,
+    stripeCustomerId: row.stripe_customer_id,
+    stripeSubscriptionId: row.stripe_subscription_id,
+    status: row.status,
+    plan: row.plan,
+    currentPeriodEnd: row.current_period_end,
+  };
+}
+
+export async function getSubscriptionByUserId(db: Db, userId: string): Promise<Subscription | null> {
+  const rows = await db`select * from subscriptions where user_id = ${userId}`;
+  return rows.length > 0 ? mapSubscription(rows[0]) : null;
+}
+
+export interface UpsertSubscriptionInput {
+  userId: string;
+  stripeCustomerId: string;
+  stripeSubscriptionId: string | null;
+  status: SubscriptionStatus;
+  plan?: string;
+  currentPeriodEnd: string | null;
+}
+
+/** Stripeのwebhookから呼ぶ。user_idで一意なのでON CONFLICTで洗い替えする。 */
+export async function upsertSubscription(db: Db, input: UpsertSubscriptionInput): Promise<void> {
+  await db`
+    insert into subscriptions (user_id, stripe_customer_id, stripe_subscription_id, status, plan, current_period_end, updated_at)
+    values (
+      ${input.userId}, ${input.stripeCustomerId}, ${input.stripeSubscriptionId},
+      ${input.status}, ${input.plan ?? "monthly"}, ${input.currentPeriodEnd}, now()
+    )
+    on conflict (user_id) do update set
+      stripe_customer_id = excluded.stripe_customer_id,
+      stripe_subscription_id = excluded.stripe_subscription_id,
+      status = excluded.status,
+      plan = excluded.plan,
+      current_period_end = excluded.current_period_end,
+      updated_at = now()
+  `;
+}
+
+export async function getUserTopicSlugs(db: Db, userId: string): Promise<string[]> {
+  const rows = await db<{ slug: string }[]>`
+    select t.slug from user_topics ut
+    join topics t on t.id = ut.topic_id
+    where ut.user_id = ${userId}
+    order by t.slug
+  `;
+  return rows.map((r) => r.slug);
+}
+
+/** 選択トピックを丸ごと洗い替える(削除→再挿入)。 */
+export async function setUserTopics(db: Db, userId: string, topicSlugs: string[]): Promise<void> {
+  await db.begin(async (tx) => {
+    await tx`delete from user_topics where user_id = ${userId}`;
+    for (const slug of topicSlugs) {
+      await tx`
+        insert into user_topics (user_id, topic_id)
+        select ${userId}, t.id from topics t where t.slug = ${slug}
+        on conflict do nothing
+      `;
+    }
+  });
 }

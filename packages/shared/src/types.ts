@@ -57,3 +57,23 @@ export interface Article {
 }
 
 export type Lang = "ja" | "en";
+
+export type SubscriptionStatus =
+  | "none"
+  | "incomplete"
+  | "incomplete_expired"
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "unpaid"
+  | "paused";
+
+export interface Subscription {
+  userId: string;
+  stripeCustomerId: string;
+  stripeSubscriptionId: string | null;
+  status: SubscriptionStatus;
+  plan: string;
+  currentPeriodEnd: string | null;
+}

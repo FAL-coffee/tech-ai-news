@@ -11,6 +11,7 @@
     "pipeline": "pnpm --filter api pipeline",
     "dev:api": "pnpm --filter api dev",
     "dev:web": "pnpm --filter web dev",
+    "stripe:setup": "pnpm --filter web setup:stripe",
     "typecheck": "pnpm -r exec tsc --noEmit"
   },
   "devDependencies": {

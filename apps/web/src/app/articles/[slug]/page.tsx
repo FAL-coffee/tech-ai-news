@@ -1,8 +1,11 @@
+import { getArticleBySlug, getSubscriptionByUserId } from "@tech-ai-news/db";
+import { isActiveSubscription, type Lang } from "@tech-ai-news/shared";
+import { headers } from "next/headers";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
-import { getArticleBySlug } from "@tech-ai-news/db";
-import type { Lang } from "@tech-ai-news/shared";
 import { LangToggle } from "../../../components/LangToggle";
+import { auth } from "../../../lib/auth";
 import { getDb } from "../../../lib/db";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +24,12 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   const article = await getArticleBySlug(db, slug);
   if (!article) notFound();
 
+  const session = await auth.api.getSession({ headers: await headers() });
+  const subscription = session ? await getSubscriptionByUserId(db, session.user.id) : null;
+  const canReadFull = isActiveSubscription(subscription?.status);
+
   const title = lang === "ja" ? article.titleJa : article.titleEn;
+  const summary = lang === "ja" ? article.summaryJa : article.summaryEn;
   const body = lang === "ja" ? article.bodyJa : article.bodyEn;
 
   return (
@@ -45,9 +53,25 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
           </a>
         </p>
 
-        <div className="article-body">
-          <ReactMarkdown>{body}</ReactMarkdown>
-        </div>
+        {canReadFull ? (
+          <div className="article-body">
+            <ReactMarkdown>{body}</ReactMarkdown>
+          </div>
+        ) : (
+          <div className="paywall">
+            <p>{summary}</p>
+            <div className="paywall-cta">
+              <p>
+                {lang === "ja"
+                  ? "全文を読むには有料プランへの登録が必要です。"
+                  : "Subscribe to read the full article."}
+              </p>
+              <Link href="/pricing" className="paywall-button">
+                {lang === "ja" ? "プランを見る" : "See pricing"}
+              </Link>
+            </div>
+          </div>
+        )}
       </article>
     </main>
   );
