@@ -1,0 +1,28 @@
+# Cloudflare Workers デプロイ設定。
+# 事前準備が必要:
+#   1. Neon/Supabase等でPostgres(pgvector拡張が使えるもの)を用意し、外部からの接続文字列を取得
+#   2. `wrangler hyperdrive create tech-ai-news --connection-string="<上記の接続文字列>"` を実行し、
+#      出力された id を下記 [[hyperdrive]] の id に設定
+#   3. シークレットは `wrangler secret put <NAME>` で個別に設定する(ANTHROPIC_API_KEY, OPENAI_API_KEY,
+#      RESEND_API_KEY, RESEND_FROM_EMAIL)。wrangler.tomlに直接書かない。
+#   4. `pnpm --filter api cf:deploy` でデプロイ
+
+name = "tech-ai-news-api"
+main = "src/worker.ts"
+compatibility_date = "2026-07-06"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+NEXT_PUBLIC_APP_URL = "https://your-domain.example"
+IMPORTANCE_THRESHOLD = "60"
+CLASSIFY_BATCH_SIZE = "50"
+MAX_GENERATE_PER_RUN = "10"
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "REPLACE_WITH_YOUR_HYPERDRIVE_ID"
+
+[triggers]
+# 30分おきにcollect→classify→generate、UTC22:00(JST7:00)に1日1回メールダイジェスト送信。
+# 前者の間隔を変える場合は src/worker.ts の DIGEST_CRON 定数とここを両方書き換えること。
+crons = ["*/30 * * * *", "0 22 * * *"]

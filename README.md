@@ -2,7 +2,7 @@
 
 テック/AI一次情報(公式ブログ・GitHub Releases等)を収集し、AIで日本語の記事を生成して配信するサービス。
 
-**Phase 1(収集→分類→生成パイプライン + 閲覧用Web)+ Phase 2(認証・Stripe課金・トピック購読・記事ペイウォール)+ Phase 3(自動実行スケジューラ・収集先/タグ候補の自動発見と承認画面)+ Phase 4(メールダイジェスト配信・SEO基盤によるグロース施策)を実装済み**です。実デプロイ(Cloudflare Workers等)は未実装です。詳細な仕様・調査は [`docs/spec.md`](./docs/spec.md) を参照してください。
+**Phase 1(収集→分類→生成パイプライン + 閲覧用Web)+ Phase 2(認証・Stripe課金・トピック購読・記事ペイウォール)+ Phase 3(自動実行スケジューラ・収集先/タグ候補の自動発見と承認画面)+ Phase 4(メールダイジェスト配信・SEO基盤・友達紹介プログラムによるグロース施策)を実装済み**です。Cloudflare Workersへの実デプロイ設定も用意していますが、`apps/web`側は下記「Cloudflareへのデプロイ」に記載の既知の問題が未解決です。詳細な仕様・調査は [`docs/spec.md`](./docs/spec.md) を参照してください。
 
 ## 構成
 
@@ -142,7 +142,7 @@ COLLECT_INTERVAL_MINUTES=30
 
 - デフォルトは無効です(`SCHEDULER_ENABLED=false`)。誤って有効化したままローカル開発を続けるとLLM API課金が定期的に発生するため、明示的にオプトインする設計にしています。
 - `apps/api` プロセスが起動し続けている間だけ機能します(サーバーレス環境では動きません)。継続稼働できるホスティング(VM、Railway、Fly.io等)であればこのままで十分です。
-- サーバーレス/Cloudflare Workers Cron Triggersへの移行は次フェーズ(下記)。`apps/api/src/app.ts` はNode APIに依存しない設計にしてあるため、移行時は`export default app`をCloudflare Workersのエントリポイントに差し替えるだけで済む想定ですが、`postgres`(postgres.js)がWorkersランタイムでそのまま動くかは未検証です(Hyperdrive等の追加検証が必要)。
+- Cloudflare Workers Cron Triggersへの移行版(`apps/api/src/worker.ts`)も用意済みです。こちらはNode常駐プロセス不要で、`wrangler.toml`の`[triggers]`で定義した時刻に自動実行されます。詳細は下記「Cloudflareへのデプロイ」を参照してください。
 
 ### メールダイジェスト配信
 
@@ -177,12 +177,41 @@ pnpm dev:web   # http://localhost:3000  (記事閲覧・認証・課金)
 pnpm typecheck
 ```
 
+## Cloudflareへのデプロイ
+
+### apps/api(Hono API + ジョブ) — ローカルで動作確認済み
+
+`apps/api/wrangler.toml` + `apps/api/src/worker.ts`(fetch/scheduledハンドラ)を用意済みです。この過程で見つけて修正した実際の問題:
+
+- `packages/llm/src/client.ts` が `new Anthropic()` / `new OpenAI()` をモジュール読み込み時に即時実行していたため、Cloudflare Workers上ではbindings(環境変数)がまだ反映されていない段階でAPIキー未設定エラーになり**Worker自体が起動できなかった**。遅延初期化(`getAnthropic()`/`getOpenAI()`)に変更して解決。
+- `apps/api/src/env.ts` も同様に `DATABASE_URL` 等をモジュール読み込み時に即時評価していたため、getterによる遅延評価に変更。
+- Cloudflare Workersのbindingsはfetchやscheduledハンドラの引数として渡され、モジュールのトップレベルスコープでは参照できない。`worker.ts`内でハンドラの先頭でbindingsを`process.env`へ橋渡しすることで、既存のジョブ実装(`process.env`読み取り前提)を変更せずに済ませている。
+
+上記修正後、`wrangler dev`(ローカルのworkerdランタイム)でWorkerが実際に起動し、`/health`が200を返すこと、DB未接続時に`/articles`が期待通り接続エラーで500になること(=クラッシュではなく想定内の失敗)、`postgres`(postgres.js)がCloudflare Workers専用ビルド(`postgres/cf/...`)を正しく解決することを確認済みです。実際のPostgres/Hyperdriveへの接続やcronトリガの発火自体は未検証です。
+
+デプロイ手順:
+1. Neon/Supabase等で外部から接続可能なPostgres(pgvector拡張対応)を用意
+2. `wrangler hyperdrive create tech-ai-news --connection-string="<接続文字列>"` を実行し、出力されたIDを `apps/api/wrangler.toml` の `[[hyperdrive]] id` に設定(Hyperdriveを使わず`wrangler secret put DATABASE_URL`で直接指定することも可能)
+3. `wrangler secret put ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `RESEND_API_KEY` / `RESEND_FROM_EMAIL` を設定
+4. `pnpm --filter api cf:deploy`
+
+### apps/web(Next.js) — 既知の問題あり(未解決)
+
+`@opennextjs/cloudflare` の設定(`apps/web/open-next.config.ts`、`apps/web/wrangler.jsonc`)を用意し、`pnpm --filter web cf:build` でのビルド自体は成功しますが、**このリポジトリの開発環境(Windows)でローカルプレビュー(`wrangler dev`)すると全ページが500エラーになる問題が未解決です**:
+
+- デフォルトのTurbopackでビルドした場合: `Error: Dynamic require of ".next/server/middleware-manifest.json" is not supported` というエラーが出る(Next.jsのサーバーコードがマニフェストファイルを実行時に動的`require()`しようとし、OpenNextのコード書き換えがこれを捕捉できていない)。`next.config.ts`に`outputFileTracingRoot`(pnpmモノレポでは必要)を設定しても解消しなかった。
+- webpackビルドに切り替えた場合: 別のエラー(`cloudflare:sockets`のようなコロンを含むモジュール指定子を、Windows上のesbuildがファイルパスとして誤解釈し `The directory name is invalid` でビルド自体が失敗)が発生する。
+- OpenNext自身が「Windows非対応・WSL推奨」と明記しているため、**WSLまたはLinux/macOS環境(あるいはGitHub ActionsのようなCI)でビルド・デプロイを試すことを推奨します**。この環境固有の問題である可能性が高く、コード側の問題とは限りません。
+- 通常のNode.js向けビルド(`pnpm --filter web build`、`pnpm dev:web`)は今回の変更後も問題なく動作します。Cloudflareへの移行を保留する場合は、Railway/Fly.io/Render等のNode.jsホスティングにそのままデプロイすることも可能です。
+
 ## 次フェーズ(未実装)
 
+- apps/webのCloudflareデプロイ(上記の既知の問題の解決。WSL/Linux環境での再検証)
 - Resend webhookによるバウンス/苦情の自動検知→`suppressions`への反映(現状は`/unsubscribe`経由の自主停止のみ)
+- 紹介プログラムの紹介者側特典(Stripe顧客バランス等でのクレジット付与。実際の金銭移動を伴うため要検証)
 - 記事ページのOG画像を動的生成(`next/og`等)。現状はテキストのOG/Twitterカードのみ
 - 年額プラン等、価格・プランの多様化(`docs/spec.md` §13-2は980円/月の単一プランのまま未決)
-- Cloudflare Workers等サーバーレス環境への実デプロイ・Cron Triggers/Queues/Workflowsへの移行(現状は`apps/api`常駐プロセス内蔵のスケジューラで代替)
+- Cron Triggers/Queues/Workflowsを使った本格的なジョブ基盤(現状は`apps/api`常駐プロセス内蔵のスケジューラ、またはCloudflare Workers cronで代替)
 - Batch APIによるLLMコスト最適化
 - `apps/api` のジョブエンドポイント(`/jobs/*`)は現状無認証です。公開デプロイ時はネットワーク制限またはトークン認証を追加してください
 - HN経由の本文取得(`apps/api/src/lib/pageContent.ts`)は簡易的なHTMLタグ除去のみで、robots.txtの確認もしていません。収集先ドメインは信頼済みリストに限定していますが、将来的にはより丁寧な本文抽出が望ましいです

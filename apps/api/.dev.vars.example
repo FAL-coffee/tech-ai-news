@@ -1,0 +1,13 @@
+# `wrangler dev` のローカル実行用シークレット。
+# 使い方: `cp .dev.vars.example .dev.vars` してから値を埋める(.dev.varsはgit管理外)。
+# 本番デプロイ時の値は wrangler secret put で個別に設定する(このファイルとは無関係)。
+
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+RESEND_API_KEY=re_...
+RESEND_FROM_EMAIL=digest@yourdomain.example
+
+# HyperdriveのローカルエミュレーションにはPostgres接続文字列が必要
+# (wrangler.tomlの[[hyperdrive]]バインディングには本番のHyperdrive IDのみを書き、
+#  ローカル用の接続文字列はこちらで指定する)。
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://postgres:postgres@localhost:5432/tech_ai_news

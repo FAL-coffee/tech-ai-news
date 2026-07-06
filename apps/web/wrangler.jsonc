@@ -1,0 +1,21 @@
+{
+  // Cloudflare Workers デプロイ設定(Next.jsを@opennextjs/cloudflareでビルドしたもの)。
+  // DATABASE_URL・STRIPE_SECRET_KEY・STRIPE_WEBHOOK_SECRET・BETTER_AUTH_SECRET等のシークレットは
+  // `wrangler secret put <NAME>` で個別に設定する(このファイルに直接書かない)。
+  // Hyperdriveではなく通常のPostgres接続文字列をそのままDATABASE_URLシークレットとして設定する方針
+  // (OpenNextは文字列のvars/secretsをprocess.envへ自動反映するため、コード変更なしで動く)。
+  // Hyperdrive(接続プーリング)を使いたい場合は apps/api/wrangler.toml の設定例を参考に
+  // [[hyperdrive]]バインディングを追加し、getDb()側でbindingから値を取り出す実装に変更すること
+  // (現状は未対応・未検証)。
+  "name": "tech-ai-news-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-07-06",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+  },
+  "vars": {
+    "NEXT_PUBLIC_APP_URL": "https://your-domain.example",
+  },
+}

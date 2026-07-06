@@ -1,5 +1,5 @@
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { anthropic } from "./client";
+import { getAnthropic } from "./client";
 import { buildGenerationSystemPrompt } from "./prompts";
 import { ArticleLanguageSchema } from "./schemas";
 
@@ -39,7 +39,7 @@ export async function generateArticle(
 
   // Sonnet 5 は temperature/top_p/top_k を一切渡さない(非デフォルト値は400)。
   // thinking は省略(Sonnet 5は省略時にadaptiveがデフォルトで適用される)。
-  const response = await anthropic.messages.parse({
+  const response = await getAnthropic().messages.parse({
     model,
     max_tokens: 16000,
     system: buildGenerationSystemPrompt(),

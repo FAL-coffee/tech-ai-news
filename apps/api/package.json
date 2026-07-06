@@ -9,7 +9,9 @@
     "classify": "tsx scripts/classify.ts",
     "generate": "tsx scripts/generate.ts",
     "digest": "tsx scripts/digest.ts",
-    "pipeline": "tsx scripts/pipeline.ts"
+    "pipeline": "tsx scripts/pipeline.ts",
+    "cf:dev": "wrangler dev",
+    "cf:deploy": "wrangler deploy"
   },
   "dependencies": {
     "@hono/node-server": "latest",
@@ -25,10 +27,12 @@
     "rss-parser": "latest"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "latest",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "tsx": "latest",
-    "typescript": "latest"
+    "typescript": "latest",
+    "wrangler": "latest"
   }
 }

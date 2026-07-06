@@ -1,5 +1,5 @@
 ﻿import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { anthropic } from "./client";
+import { getAnthropic } from "./client";
 import { CLASSIFY_SYSTEM_PROMPT } from "./prompts";
 import { buildClassificationSchema } from "./schemas";
 
@@ -47,7 +47,7 @@ export async function classifyItem(
   ].join("\n");
 
   // Haiku 4.5 は effort / thinking 未対応のため一切設定しない。
-  const response = await anthropic.messages.parse({
+  const response = await getAnthropic().messages.parse({
     model,
     max_tokens: 1024,
     system: CLASSIFY_SYSTEM_PROMPT,
