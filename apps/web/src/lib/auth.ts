@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { Pool } from "pg";
+import { getResend } from "./resend";
 
 function createAuth() {
   return betterAuth({
@@ -12,6 +13,19 @@ function createAuth() {
     secret: process.env.BETTER_AUTH_SECRET,
     emailAndPassword: {
       enabled: true,
+      sendResetPassword: async ({ user, url }) => {
+        await getResend().emails.send({
+          from: process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev",
+          to: user.email,
+          subject: "【tech/ai news】パスワード再設定のご案内",
+          html: `
+            <p>パスワードの再設定リクエストを受け付けました。</p>
+            <p>下記のリンクから新しいパスワードを設定してください(このリンクの有効期限は1時間です)。</p>
+            <p><a href="${url}">パスワードを再設定する</a></p>
+            <p>このリクエストに心当たりがない場合は、このメールを無視してください。</p>
+          `,
+        });
+      },
     },
     plugins: [nextCookies()],
   });

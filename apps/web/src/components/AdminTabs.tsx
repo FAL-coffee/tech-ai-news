@@ -7,6 +7,7 @@ const TABS = [
   { href: "/admin", label: "概要" },
   { href: "/admin/sources", label: "収集先候補" },
   { href: "/admin/topics", label: "タグ候補" },
+  { href: "/admin/users", label: "ユーザー" },
 ];
 
 export function AdminTabs() {

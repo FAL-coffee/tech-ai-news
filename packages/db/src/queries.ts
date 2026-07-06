@@ -351,7 +351,7 @@ export async function getSubscriptionByUserId(db: Db, userId: string): Promise<S
 
 export interface UpsertSubscriptionInput {
   userId: string;
-  stripeCustomerId: string;
+  stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   status: SubscriptionStatus;
   plan?: string;
@@ -795,4 +795,68 @@ export async function listBookmarkedArticles(db: Db, userId: string): Promise<Ar
     order by b.created_at desc
   `;
   return rows.map(mapArticle);
+}
+
+export interface AdminUserListItem {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  createdAt: string;
+  subscriptionStatus: SubscriptionStatus | null;
+  subscriptionPlan: string | null;
+}
+
+function mapAdminUserListItem(row: any): AdminUserListItem {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    emailVerified: row.emailVerified,
+    createdAt: row.createdAt,
+    subscriptionStatus: row.subscription_status,
+    subscriptionPlan: row.subscription_plan,
+  };
+}
+
+export interface ListUsersForAdminOptions {
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function listUsersForAdmin(db: Db, opts: ListUsersForAdminOptions = {}): Promise<AdminUserListItem[]> {
+  const limit = opts.limit ?? 50;
+  const offset = opts.offset ?? 0;
+  const search = opts.search?.trim();
+  const rows = search
+    ? await db`
+        select u."id", u."name", u."email", u."emailVerified", u."createdAt",
+               s.status as subscription_status, s.plan as subscription_plan
+        from "user" u
+        left join subscriptions s on s.user_id = u."id"
+        where u."email" ilike ${`%${search}%`} or u."name" ilike ${`%${search}%`}
+        order by u."createdAt" desc
+        limit ${limit} offset ${offset}
+      `
+    : await db`
+        select u."id", u."name", u."email", u."emailVerified", u."createdAt",
+               s.status as subscription_status, s.plan as subscription_plan
+        from "user" u
+        left join subscriptions s on s.user_id = u."id"
+        order by u."createdAt" desc
+        limit ${limit} offset ${offset}
+      `;
+  return rows.map(mapAdminUserListItem);
+}
+
+export async function countUsersForAdmin(db: Db, search?: string): Promise<number> {
+  const trimmed = search?.trim();
+  const rows = trimmed
+    ? await db<{ count: number }[]>`
+        select count(*)::int as count from "user"
+        where "email" ilike ${`%${trimmed}%`} or "name" ilike ${`%${trimmed}%`}
+      `
+    : await db<{ count: number }[]>`select count(*)::int as count from "user"`;
+  return rows[0]?.count ?? 0;
 }

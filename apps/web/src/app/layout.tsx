@@ -78,10 +78,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         {children}
         <footer className="site-footer">
           <div className="site-footer-inner">
-            <span>© {new Date().getFullYear()} tech-ai-news</span>
+            <span>© {new Date().getFullYear()} tech/ai news</span>
             <div className="footer-links">
+              <Link href="/about">サービス概要</Link>
               <Link href="/pricing">料金</Link>
-              <a href="mailto:hello@tech-ai-news.example">お問い合わせ</a>
+              <Link href="/terms">利用規約</Link>
+              <Link href="/privacy">プライバシーポリシー</Link>
+              <Link href="/tokushoho">特定商取引法に基づく表記</Link>
+              <a href="mailto:fal.engineer.2001@gmail.com">お問い合わせ</a>
             </div>
           </div>
         </footer>

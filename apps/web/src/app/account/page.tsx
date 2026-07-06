@@ -49,7 +49,12 @@ export default async function AccountPage() {
 
       <section className="card">
         <h2>プラン</h2>
-        {active ? (
+        {active && subscription?.plan === "comp" ? (
+          <>
+            <span className="status-badge status-badge-active">無料会員(特別付与)</span>
+            <p className="meta">運営より無料で全文記事の閲覧が許可されています。</p>
+          </>
+        ) : active ? (
           <>
             <span className="status-badge status-badge-active">有料会員 · {subscription?.status}</span>
             {subscription?.currentPeriodEnd && (

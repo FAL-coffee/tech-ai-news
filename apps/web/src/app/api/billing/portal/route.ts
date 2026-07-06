@@ -14,8 +14,8 @@ export async function POST() {
 
   const db = getDb();
   const subscription = await getSubscriptionByUserId(db, session.user.id);
-  if (!subscription) {
-    return NextResponse.redirect(new URL("/pricing", appUrl()));
+  if (!subscription?.stripeCustomerId) {
+    return NextResponse.redirect(new URL("/account", appUrl()));
   }
 
   const stripe = getStripe();

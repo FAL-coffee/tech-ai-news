@@ -68,7 +68,7 @@ export type SubscriptionStatus =
 
 export interface Subscription {
   userId: string;
-  stripeCustomerId: string;
+  stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   status: SubscriptionStatus;
   plan: string;
