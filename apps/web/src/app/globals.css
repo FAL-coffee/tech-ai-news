@@ -526,6 +526,51 @@ h1, h2, h3 {
   color: var(--text-muted);
 }
 
+.article-reactions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+  font-family: var(--font-sans);
+}
+
+.reaction-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.reaction-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.reaction-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.reaction-button[data-active="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.reaction-button:not([data-active="true"]):hover {
+  border-color: var(--text-faint);
+  color: var(--text);
+}
+
 .share-links {
   display: flex;
   align-items: center;
@@ -973,6 +1018,26 @@ form {
   font-weight: 600;
 }
 
+.bookmark-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+}
+
+.bookmark-list a {
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.bookmark-list a:hover {
+  text-decoration: underline;
+}
+
 .referral-link-input {
   flex: 1;
   min-width: 0;
@@ -1117,4 +1182,36 @@ form {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border);
+}
+
+.candidate-bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.25rem;
+  font-family: var(--font-sans);
+  position: sticky;
+  top: calc(var(--header-h) + 0.75rem);
+  z-index: 5;
+}
+
+.candidate-bulk-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.candidate-card-header .consent-checkbox {
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+}
+
+.candidate-card-header .consent-checkbox h2 {
+  margin: 0;
 }

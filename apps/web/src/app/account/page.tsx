@@ -3,6 +3,7 @@ import {
   getEmailPreferenceByUserId,
   getSubscriptionByUserId,
   getUserTopicSlugs,
+  listBookmarkedArticles,
   listTopics,
 } from "@tech-ai-news/db";
 import { isActiveSubscription } from "@tech-ai-news/shared";
@@ -26,13 +27,15 @@ export default async function AccountPage() {
   }
 
   const db = getDb();
-  const [subscription, topics, selectedSlugs, emailPreference, referralCount] = await Promise.all([
-    getSubscriptionByUserId(db, session.user.id),
-    listTopics(db),
-    getUserTopicSlugs(db, session.user.id),
-    getEmailPreferenceByUserId(db, session.user.id),
-    countReferralsByReferrer(db, session.user.id),
-  ]);
+  const [subscription, topics, selectedSlugs, emailPreference, referralCount, bookmarkedArticles] =
+    await Promise.all([
+      getSubscriptionByUserId(db, session.user.id),
+      listTopics(db),
+      getUserTopicSlugs(db, session.user.id),
+      getEmailPreferenceByUserId(db, session.user.id),
+      countReferralsByReferrer(db, session.user.id),
+      listBookmarkedArticles(db, session.user.id),
+    ]);
 
   const active = isActiveSubscription(subscription?.status);
 
@@ -85,6 +88,21 @@ export default async function AccountPage() {
         <h2>メール配信</h2>
         <p className="meta">興味のあるトピックの新着記事をメールでお届けします。いつでも配信停止できます。</p>
         <EmailDigestToggle initialEnabled={emailPreference?.digestEnabled ?? false} />
+      </section>
+
+      <section className="card">
+        <h2>ブックマークした記事</h2>
+        {bookmarkedArticles.length === 0 ? (
+          <p className="meta">まだブックマークした記事はありません。</p>
+        ) : (
+          <ul className="bookmark-list">
+            {bookmarkedArticles.map((article) => (
+              <li key={article.id}>
+                <Link href={`/articles/${article.slug}`}>{article.title}</Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="card">

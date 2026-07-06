@@ -23,7 +23,7 @@ async function main() {
 
   const product = await stripe.products.create({
     name: "tech-ai-news スタンダードプラン",
-    description: "テック/AI一次情報の日英AI記事を全文閲覧できる月額プラン",
+    description: "テック/AI一次情報のAI記事を全文閲覧できる月額プラン",
   });
 
   const price = await stripe.prices.create({

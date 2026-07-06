@@ -22,7 +22,7 @@ export default async function PricingPage() {
       <div className="pricing-hero">
         <span className="hero-eyebrow">Pricing</span>
         <h1 className="hero-title">料金プラン</h1>
-        <p className="hero-subtitle">シンプルな1プランで、すべての一次情報記事を日英で読めます。</p>
+        <p className="hero-subtitle">シンプルな1プランで、すべての一次情報記事を読めます。</p>
       </div>
 
       <div className="pricing-layout">
@@ -33,7 +33,7 @@ export default async function PricingPage() {
             <span className="price-period">/ 月(税込)</span>
           </p>
           <ul className="feature-list">
-            {["すべての記事を全文閲覧", "興味のあるトピックの選択", "日本語・英語どちらでも閲覧可能"].map((feature) => (
+            {["すべての記事を全文閲覧", "興味のあるトピックの選択", "いつでも解約可能"].map((feature) => (
               <li key={feature}>
                 <span className="feature-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">

@@ -732,3 +732,61 @@ export async function countReferralsByReferrer(db: Db, referrerUserId: string): 
   const rows = await db`select count(*)::int as count from referrals where referrer_user_id = ${referrerUserId}`;
   return rows[0]?.count ?? 0;
 }
+
+// ---------------------------------------------------------------------------
+// 記事へのいいね・ブックマーク
+// ---------------------------------------------------------------------------
+
+/** トグル動作: 既に押していれば取り消し、押していなければ登録する。 */
+export async function toggleLike(db: Db, userId: string, articleId: string): Promise<{ liked: boolean }> {
+  const [existing] = await db`select 1 from article_likes where user_id = ${userId} and article_id = ${articleId}`;
+  if (existing) {
+    await db`delete from article_likes where user_id = ${userId} and article_id = ${articleId}`;
+    return { liked: false };
+  }
+  await db`insert into article_likes (user_id, article_id) values (${userId}, ${articleId}) on conflict do nothing`;
+  return { liked: true };
+}
+
+export async function toggleBookmark(db: Db, userId: string, articleId: string): Promise<{ bookmarked: boolean }> {
+  const [existing] = await db`
+    select 1 from article_bookmarks where user_id = ${userId} and article_id = ${articleId}
+  `;
+  if (existing) {
+    await db`delete from article_bookmarks where user_id = ${userId} and article_id = ${articleId}`;
+    return { bookmarked: false };
+  }
+  await db`insert into article_bookmarks (user_id, article_id) values (${userId}, ${articleId}) on conflict do nothing`;
+  return { bookmarked: true };
+}
+
+export async function getLikeCount(db: Db, articleId: string): Promise<number> {
+  const [row] = await db`select count(*)::int as count from article_likes where article_id = ${articleId}`;
+  return row?.count ?? 0;
+}
+
+export async function isLikedByUser(db: Db, userId: string, articleId: string): Promise<boolean> {
+  const rows = await db`select 1 from article_likes where user_id = ${userId} and article_id = ${articleId}`;
+  return rows.length > 0;
+}
+
+export async function isBookmarkedByUser(db: Db, userId: string, articleId: string): Promise<boolean> {
+  const rows = await db`
+    select 1 from article_bookmarks where user_id = ${userId} and article_id = ${articleId}
+  `;
+  return rows.length > 0;
+}
+
+export async function listBookmarkedArticles(db: Db, userId: string): Promise<Article[]> {
+  const rows = await db`
+    select a.*, array_agg(t.slug) as topic_slugs
+    from article_bookmarks b
+    join articles a on a.id = b.article_id
+    left join article_topics at2 on at2.article_id = a.id
+    left join topics t on t.id = at2.topic_id
+    where b.user_id = ${userId}
+    group by a.id, b.created_at
+    order by b.created_at desc
+  `;
+  return rows.map(mapArticle);
+}

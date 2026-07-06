@@ -13,7 +13,7 @@ export default async function SignupPage({ searchParams }: PageProps) {
       <div className="auth-card">
         <h1>新規登録</h1>
         <p className="auth-subtitle">
-          {ref ? "友達からの紹介で、無料トライアルが通常より長くなります。" : "有料プランですべての記事を日英で読めます"}
+          {ref ? "友達からの紹介で、無料トライアルが通常より長くなります。" : "有料プランですべての記事を読めます"}
         </p>
         <SignupForm next={next ?? "/pricing"} referrerUserId={ref} />
         <p className="auth-footer">

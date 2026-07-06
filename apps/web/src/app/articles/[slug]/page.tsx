@@ -1,10 +1,17 @@
-import { getArticleBySlug, getSubscriptionByUserId } from "@tech-ai-news/db";
+import {
+  getArticleBySlug,
+  getLikeCount,
+  getSubscriptionByUserId,
+  isBookmarkedByUser,
+  isLikedByUser,
+} from "@tech-ai-news/db";
 import { isActiveSubscription } from "@tech-ai-news/shared";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
+import { ArticleReactions } from "../../../components/ArticleReactions";
 import { ShareLinks } from "../../../components/ShareLinks";
 import { auth } from "../../../lib/auth";
 import { getDb } from "../../../lib/db";
@@ -44,7 +51,12 @@ export default async function ArticlePage({ params }: PageProps) {
   if (!article) notFound();
 
   const session = await auth.api.getSession({ headers: await headers() });
-  const subscription = session ? await getSubscriptionByUserId(db, session.user.id) : null;
+  const [subscription, likeCount, liked, bookmarked] = await Promise.all([
+    session ? getSubscriptionByUserId(db, session.user.id) : null,
+    getLikeCount(db, article.id),
+    session ? isLikedByUser(db, session.user.id, article.id) : false,
+    session ? isBookmarkedByUser(db, session.user.id, article.id) : false,
+  ]);
   const canReadFull = isActiveSubscription(subscription?.status);
 
   return (
@@ -77,6 +89,14 @@ export default async function ArticlePage({ params }: PageProps) {
             原文を読む →
           </a>
         </p>
+
+        <ArticleReactions
+          slug={article.slug}
+          isLoggedIn={session !== null}
+          initialLiked={liked}
+          initialLikeCount={likeCount}
+          initialBookmarked={bookmarked}
+        />
 
         <ShareLinks url={`${appUrl()}/articles/${article.slug}`} title={article.title} />
 
