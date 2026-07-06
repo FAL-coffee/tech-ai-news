@@ -481,16 +481,20 @@ export async function listSourceCandidates(db: Db, status: CandidateStatus): Pro
   return rows.map(mapSourceCandidate);
 }
 
-/** 承認: trusted_domainsへ追加し、フィード自動検出できていればsourcesにも登録する。 */
+/**
+ * 承認: trusted_domainsへ追加し、フィード自動検出できていればsourcesにも登録する。
+ * すでにpending以外(approved/rejected)の候補は無視する(承認→却下のような操作の重複で
+ * trusted_domains/sourcesへの副作用だけが残ってしまう事故を防ぐため)。
+ */
 export async function approveSourceCandidate(
   db: Db,
   id: string,
   reviewedBy: string,
 ): Promise<{ sourceId: string | null }> {
   return db.begin(async (tx) => {
-    const [candidate] = await tx`select * from source_candidates where id = ${id}`;
+    const [candidate] = await tx`select * from source_candidates where id = ${id} and status = 'pending'`;
     if (!candidate) {
-      throw new Error(`source candidate not found: ${id}`);
+      return { sourceId: null };
     }
 
     await tx`
@@ -520,11 +524,12 @@ export async function approveSourceCandidate(
   });
 }
 
+/** すでにpending以外の候補への却下は無視する(承認済みをうっかり却下してもtrusted_domains/sourcesはそのまま残ってしまうため、statusだけ変えるのは危険)。 */
 export async function rejectSourceCandidate(db: Db, id: string, reviewedBy: string): Promise<void> {
   await db`
     update source_candidates
     set status = 'rejected', reviewed_by = ${reviewedBy}, reviewed_at = now(), updated_at = now()
-    where id = ${id}
+    where id = ${id} and status = 'pending'
   `;
 }
 
@@ -569,15 +574,16 @@ export async function listTopicCandidates(db: Db, status: CandidateStatus): Prom
   return rows.map(mapTopicCandidate);
 }
 
+/** すでにpending以外の候補への承認は無視する(idと同じ理由の安全策)。 */
 export async function approveTopicCandidate(
   db: Db,
   id: string,
   reviewedBy: string,
-): Promise<{ topicId: string }> {
+): Promise<{ topicId: string | null }> {
   return db.begin(async (tx) => {
-    const [candidate] = await tx`select * from topic_candidates where id = ${id}`;
+    const [candidate] = await tx`select * from topic_candidates where id = ${id} and status = 'pending'`;
     if (!candidate) {
-      throw new Error(`topic candidate not found: ${id}`);
+      return { topicId: null };
     }
 
     const [topic] = await tx`
@@ -601,7 +607,7 @@ export async function rejectTopicCandidate(db: Db, id: string, reviewedBy: strin
   await db`
     update topic_candidates
     set status = 'rejected', reviewed_by = ${reviewedBy}, reviewed_at = now(), updated_at = now()
-    where id = ${id}
+    where id = ${id} and status = 'pending'
   `;
 }
 
