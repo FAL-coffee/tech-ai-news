@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { countPublishedArticles, listPublishedArticles } from "@tech-ai-news/db";
+import { countPublishedArticles, getUserTopicSlugs, listPublishedArticles, listRecommendedArticles } from "@tech-ai-news/db";
+import { headers } from "next/headers";
 import { ArticleCard } from "../components/ArticleCard";
+import { auth } from "../lib/auth";
 import { getDb } from "../lib/db";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;
+const RECOMMENDED_LIMIT = 6;
 
 interface PageProps {
   searchParams: Promise<{ topic?: string; q?: string; page?: string }>;
@@ -25,12 +28,23 @@ export default async function HomePage({ searchParams }: PageProps) {
   const { topic, q, page: pageParam } = await searchParams;
   const search = q?.trim() ?? "";
   const page = Math.max(1, Number(pageParam) || 1);
+  const showRecommended = !topic && !search && page === 1;
 
   const db = getDb();
-  const [articles, total] = await Promise.all([
+  const [articles, total, session] = await Promise.all([
     listPublishedArticles(db, { topic, search, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
     countPublishedArticles(db, { topic, search }),
+    showRecommended ? auth.api.getSession({ headers: await headers() }) : null,
   ]);
+
+  const userTopicSlugs = showRecommended && session ? await getUserTopicSlugs(db, session.user.id) : [];
+  const recommended = showRecommended
+    ? await listRecommendedArticles(db, {
+        topicSlugs: userTopicSlugs,
+        excludeIds: articles.map((a) => a.id),
+        limit: RECOMMENDED_LIMIT,
+      })
+    : [];
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -57,12 +71,30 @@ export default async function HomePage({ searchParams }: PageProps) {
         <Link href="/topics">トピック一覧から探す →</Link>
       </p>
 
+      {showRecommended && recommended.length > 0 && (
+        <section className="recommended-section">
+          <h2 className="section-heading">{userTopicSlugs.length > 0 ? "あなたへのおすすめ" : "注目の記事"}</h2>
+          {session && userTopicSlugs.length === 0 && (
+            <p className="meta">
+              <Link href="/account">興味のあるトピックを選択</Link>すると、おすすめが最適化されます。
+            </p>
+          )}
+          <div className="recommended-grid">
+            {recommended.map((article) => (
+              <ArticleCard key={article.id} article={article} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {topic && (
         <p className="topic-filter">
           トピック: {topic}
           <Link href={search ? `/?q=${encodeURIComponent(search)}` : "/"}>解除</Link>
         </p>
       )}
+
+      {showRecommended && <h2 className="section-heading">新着記事</h2>}
 
       <div className="article-list">
         {articles.length === 0 && (

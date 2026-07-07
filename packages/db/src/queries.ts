@@ -332,6 +332,52 @@ export async function countPublishedArticles(db: Db, opts: CountArticlesOptions 
   return rows[0]?.count ?? 0;
 }
 
+export interface RecommendedArticlesOptions {
+  topicSlugs: string[];
+  excludeIds?: string[];
+  limit?: number;
+}
+
+/**
+ * トップページの「おすすめ」用。興味トピックがあればそれに合う記事を新着順、無ければ重要度順の
+ * 記事(ログインしていない/トピック未選択のユーザー向けの既定表示)を返す。
+ */
+export async function listRecommendedArticles(db: Db, opts: RecommendedArticlesOptions): Promise<Article[]> {
+  const limit = opts.limit ?? 6;
+  const excludeIds = opts.excludeIds ?? [];
+
+  const rows =
+    opts.topicSlugs.length > 0
+      ? await db`
+          select a.*, array_agg(t.slug) as topic_slugs
+          from articles a
+          join article_topics at2 on at2.article_id = a.id
+          join topics t on t.id = at2.topic_id
+          where a.status = 'published'
+            and not (a.id = any(${excludeIds}))
+            and a.id in (
+              select at3.article_id from article_topics at3
+              join topics t2 on t2.id = at3.topic_id
+              where t2.slug = any(${opts.topicSlugs})
+            )
+          group by a.id
+          order by a.published_at desc
+          limit ${limit}
+        `
+      : await db`
+          select a.*, array_agg(t.slug) as topic_slugs
+          from articles a
+          left join article_topics at2 on at2.article_id = a.id
+          left join topics t on t.id = at2.topic_id
+          where a.status = 'published'
+            and not (a.id = any(${excludeIds}))
+          group by a.id
+          order by a.importance desc, a.published_at desc
+          limit ${limit}
+        `;
+  return rows.map(mapArticle);
+}
+
 export interface DigestArticlesOptions {
   sinceDate: string;
   topicSlugs: string[];

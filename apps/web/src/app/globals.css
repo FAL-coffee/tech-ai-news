@@ -278,6 +278,62 @@ h1, h2, h3 {
   font-weight: 600;
 }
 
+.recommended-section {
+  margin-bottom: 2.75rem;
+}
+
+.section-heading {
+  font-size: 1.25rem;
+  margin: 0 0 1.25rem;
+}
+
+.recommended-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.recommended-grid .article-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.recommended-grid .article-card-image {
+  margin-bottom: 0;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  aspect-ratio: 16 / 9;
+}
+
+.recommended-grid .article-card h2 {
+  font-size: 1.02rem;
+  padding: 0 1.1rem;
+  margin-top: 0.9rem;
+}
+
+.recommended-grid .article-card .meta {
+  padding: 0 1.1rem;
+}
+
+.recommended-grid .article-card > p:not(.meta) {
+  padding: 0 1.1rem;
+}
+
+.recommended-grid .article-card .highlight-callout {
+  margin: 0 1.1rem 0.75rem;
+}
+
+.recommended-grid .article-card .topics {
+  padding: 0 1.1rem;
+  margin-top: 0.75rem;
+}
+
 .article-list {
   display: flex;
   flex-direction: column;
