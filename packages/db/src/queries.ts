@@ -77,6 +77,28 @@ export async function listEnabledSources(db: Db): Promise<Source[]> {
   return rows.map(mapSource);
 }
 
+export async function listAllSourceNames(db: Db): Promise<string[]> {
+  const rows = await db<{ name: string }[]>`select name from sources`;
+  return rows.map((r) => r.name);
+}
+
+export interface InsertSourceInput {
+  name: string;
+  kind: Source["kind"];
+  url: string;
+}
+
+/** 収集先候補(source_candidates)を介さず、検証済みのソースを直接登録する(discoverTrendsジョブ用)。 */
+export async function insertSource(db: Db, input: InsertSourceInput): Promise<{ inserted: boolean }> {
+  const rows = await db`
+    insert into sources (name, kind, url)
+    values (${input.name}, ${input.kind}, ${input.url})
+    on conflict (url) do nothing
+    returning id
+  `;
+  return { inserted: rows.length > 0 };
+}
+
 export async function updateSourceFetchMeta(
   db: Db,
   id: string,

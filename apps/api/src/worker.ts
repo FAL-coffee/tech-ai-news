@@ -5,10 +5,12 @@ import { env } from "./env";
 import { runClassify } from "./jobs/classify";
 import { runCollect } from "./jobs/collect";
 import { runDigest } from "./jobs/digest";
+import { runDiscoverTrends } from "./jobs/discoverTrends";
 import { runGenerate } from "./jobs/generate";
 
-// wrangler.tomlのcron設定と対応する値。ダイジェスト送信専用のcronだけを識別するために使う。
+// wrangler.tomlのcron設定と対応する値。ダイジェスト送信/トレンド発見専用のcronだけを識別するために使う。
 const DIGEST_CRON = "0 22 * * *"; // UTC 22:00 = JST 7:00
+const DISCOVER_TRENDS_CRON = "0 3 */3 * *"; // 3日おき UTC 3:00 = JST 12:00
 
 export interface WorkerBindings {
   DATABASE_URL?: string;
@@ -43,6 +45,13 @@ export default {
 
     if (event.cron === DIGEST_CRON) {
       ctx.waitUntil(runDigest());
+      return;
+    }
+
+    if (event.cron === DISCOVER_TRENDS_CRON) {
+      ctx.waitUntil(
+        runDiscoverTrends().catch((err) => console.error("[scheduled] runDiscoverTrends failed", err)),
+      );
       return;
     }
 

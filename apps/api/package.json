@@ -9,6 +9,7 @@
     "classify": "tsx scripts/classify.ts",
     "generate": "tsx scripts/generate.ts",
     "digest": "tsx scripts/digest.ts",
+    "discover-trends": "tsx scripts/discoverTrends.ts",
     "pipeline": "tsx scripts/pipeline.ts",
     "cf:dev": "wrangler dev",
     "cf:deploy": "wrangler deploy"

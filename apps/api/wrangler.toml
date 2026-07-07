@@ -18,6 +18,7 @@ CLASSIFY_BATCH_SIZE = "50"
 MAX_GENERATE_PER_RUN = "10"
 
 [triggers]
-# 30分おきにcollect→classify→generate、UTC22:00(JST7:00)に1日1回メールダイジェスト送信。
-# 前者の間隔を変える場合は src/worker.ts の DIGEST_CRON 定数とここを両方書き換えること。
-crons = ["*/30 * * * *", "0 22 * * *"]
+# 30分おきにcollect→classify→generate、UTC22:00(JST7:00)に1日1回メールダイジェスト送信、
+# 3日おきUTC3:00(JST12:00)にAIによるトレンド技術発見(discoverTrends)を実行。
+# 間隔を変える場合は src/worker.ts の DIGEST_CRON / DISCOVER_TRENDS_CRON 定数とここを両方書き換えること。
+crons = ["*/30 * * * *", "0 22 * * *", "0 3 */3 * *"]

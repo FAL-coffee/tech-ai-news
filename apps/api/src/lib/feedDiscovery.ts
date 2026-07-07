@@ -47,6 +47,20 @@ function classifyFeedBody(contentType: string, body: string): "rss" | "atom" | n
   return null;
 }
 
+/** 既知のURL(推測したgithub_releases.atom等)が実際に有効なフィードかどうかを検証する。 */
+export async function verifyFeedUrl(url: string): Promise<DiscoveredFeed | null> {
+  try {
+    const res = await fetch(url, { headers: { "user-agent": USER_AGENT }, signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type") ?? "";
+    const body = await res.text();
+    const kind = classifyFeedBody(contentType, body);
+    return kind ? { url: res.url || url, kind } : null;
+  } catch {
+    return null;
+  }
+}
+
 const CANDIDATE_PATHS = [
   "/rss.xml",
   "/feed.xml",
