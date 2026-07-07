@@ -1,3 +1,5 @@
+import { decodeHtmlEntities } from "./html";
+
 const USER_AGENT = "tech-ai-news-bot/0.1 (+https://github.com/FAL-coffee/tech-ai-news)";
 
 const META_TAG_RE = /<meta\b[^>]*>/gi;
@@ -5,7 +7,7 @@ const META_TAG_RE = /<meta\b[^>]*>/gi;
 function extractAttr(tag: string, attr: string): string | null {
   const re = new RegExp(`${attr}\\s*=\\s*["']([^"']*)["']`, "i");
   const match = tag.match(re);
-  return match ? match[1] : null;
+  return match ? decodeHtmlEntities(match[1]) : null;
 }
 
 function findImageMetaTag(html: string): string | null {
