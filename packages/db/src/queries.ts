@@ -70,8 +70,10 @@ export function toVectorLiteral(vec: number[]): string {
   return `[${vec.join(",")}]`;
 }
 
+/** 最後に取得した時刻が古いソースから順に返す(nullは未取得として最優先)。1回の実行で
+ * 全ソースを処理しきれない場合(呼び出し側でlimitを適用する場合)でも、公平に巡回できるようにする。 */
 export async function listEnabledSources(db: Db): Promise<Source[]> {
-  const rows = await db`select * from sources where enabled = true order by name`;
+  const rows = await db`select * from sources where enabled = true order by last_fetched_at asc nulls first, name asc`;
   return rows.map(mapSource);
 }
 

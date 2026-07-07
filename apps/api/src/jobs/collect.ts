@@ -38,6 +38,11 @@ export interface CollectSummary {
 // 制限し、残りは次回以降の実行に回す(候補自体はfeed未検出のまま先にDBへ記録するので取りこぼさない)。
 const MAX_FEED_DISCOVERY_PER_RUN = 5;
 
+// sources件数が増えるとcollect単体でもサブリクエスト数/実行時間を圧迫し、後続のclassify/generateが
+// 実行される前にCloudflare Workersの上限に達するリスクがある。1回の実行で処理するソース数を制限し、
+// listEnabledSources()が古い順(未取得優先)に返す前提で、複数回の実行にわたって全ソースを巡回する。
+const MAX_SOURCES_PER_RUN = 40;
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -191,7 +196,7 @@ export async function runCollect(db?: Db): Promise<CollectSummary> {
   };
 
   try {
-    const sources = await listEnabledSources(ownDb);
+    const sources = (await listEnabledSources(ownDb)).slice(0, MAX_SOURCES_PER_RUN);
 
     for (const source of sources) {
       summary.sourcesChecked += 1;
