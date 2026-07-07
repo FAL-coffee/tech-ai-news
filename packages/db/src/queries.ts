@@ -236,11 +236,17 @@ export async function insertArticleWithTopics(db: Db, input: NewArticleInput): P
 
 export interface ListArticlesOptions {
   topic?: string;
+  search?: string;
   limit?: number;
+  offset?: number;
 }
 
 export async function listPublishedArticles(db: Db, opts: ListArticlesOptions = {}): Promise<Article[]> {
   const limit = opts.limit ?? 50;
+  const offset = opts.offset ?? 0;
+  const search = opts.search?.trim() ?? "";
+  const searchPattern = `%${search}%`;
+
   const rows = opts.topic
     ? await db`
         select a.*, array_agg(t.slug) as topic_slugs
@@ -248,6 +254,7 @@ export async function listPublishedArticles(db: Db, opts: ListArticlesOptions = 
         join article_topics at2 on at2.article_id = a.id
         join topics t on t.id = at2.topic_id
         where a.status = 'published'
+          and (${search} = '' or a.title ilike ${searchPattern} or a.summary ilike ${searchPattern} or a.body ilike ${searchPattern})
           and a.id in (
             select at3.article_id from article_topics at3
             join topics t2 on t2.id = at3.topic_id
@@ -255,7 +262,7 @@ export async function listPublishedArticles(db: Db, opts: ListArticlesOptions = 
           )
         group by a.id
         order by a.published_at desc
-        limit ${limit}
+        limit ${limit} offset ${offset}
       `
     : await db`
         select a.*, array_agg(t.slug) as topic_slugs
@@ -263,11 +270,42 @@ export async function listPublishedArticles(db: Db, opts: ListArticlesOptions = 
         left join article_topics at2 on at2.article_id = a.id
         left join topics t on t.id = at2.topic_id
         where a.status = 'published'
+          and (${search} = '' or a.title ilike ${searchPattern} or a.summary ilike ${searchPattern} or a.body ilike ${searchPattern})
         group by a.id
         order by a.published_at desc
-        limit ${limit}
+        limit ${limit} offset ${offset}
       `;
   return rows.map(mapArticle);
+}
+
+export interface CountArticlesOptions {
+  topic?: string;
+  search?: string;
+}
+
+export async function countPublishedArticles(db: Db, opts: CountArticlesOptions = {}): Promise<number> {
+  const search = opts.search?.trim() ?? "";
+  const searchPattern = `%${search}%`;
+
+  const rows = opts.topic
+    ? await db<{ count: number }[]>`
+        select count(distinct a.id)::int as count
+        from articles a
+        where a.status = 'published'
+          and (${search} = '' or a.title ilike ${searchPattern} or a.summary ilike ${searchPattern} or a.body ilike ${searchPattern})
+          and a.id in (
+            select at3.article_id from article_topics at3
+            join topics t2 on t2.id = at3.topic_id
+            where t2.slug = ${opts.topic}
+          )
+      `
+    : await db<{ count: number }[]>`
+        select count(*)::int as count
+        from articles a
+        where a.status = 'published'
+          and (${search} = '' or a.title ilike ${searchPattern} or a.summary ilike ${searchPattern} or a.body ilike ${searchPattern})
+      `;
+  return rows[0]?.count ?? 0;
 }
 
 export interface DigestArticlesOptions {
@@ -330,6 +368,29 @@ export async function listTopics(db: Db): Promise<Topic[]> {
     slug: row.slug,
     nameJa: row.name_ja,
     nameEn: row.name_en,
+  }));
+}
+
+export interface TopicWithArticleCount extends Topic {
+  articleCount: number;
+}
+
+/** トピック一覧ページ用: 公開済み記事の件数付き(件数が多い順)。記事が0件のトピックも含む。 */
+export async function listTopicsWithArticleCount(db: Db): Promise<TopicWithArticleCount[]> {
+  const rows = await db`
+    select t.*, count(a.id) as article_count
+    from topics t
+    left join article_topics at2 on at2.topic_id = t.id
+    left join articles a on a.id = at2.article_id and a.status = 'published'
+    group by t.id
+    order by article_count desc, t.slug
+  `;
+  return rows.map((row: any) => ({
+    id: row.id,
+    slug: row.slug,
+    nameJa: row.name_ja,
+    nameEn: row.name_en,
+    articleCount: Number(row.article_count),
   }));
 }
 

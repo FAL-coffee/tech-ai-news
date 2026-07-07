@@ -367,6 +367,58 @@ h1, h2, h3 {
   border-bottom-color: var(--accent);
 }
 
+.topics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.topic-count-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.4rem;
+  text-decoration: none;
+  color: var(--text);
+  display: block;
+  transition: border-color 0.15s ease;
+}
+
+.topic-count-card:hover {
+  border-color: var(--border-strong);
+}
+
+.topic-count-value {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
+
+.topic-count-label {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.topics-link-row {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  margin: -0.5rem 0 1.5rem;
+}
+
+.topics-link-row a {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.topics-link-row a:hover {
+  text-decoration: underline;
+}
+
 .empty-state {
   font-family: var(--font-sans);
   border: 1px dashed var(--border-strong);

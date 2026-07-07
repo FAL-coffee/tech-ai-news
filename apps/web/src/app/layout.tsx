@@ -50,6 +50,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               tech<span className="brand-accent">/</span>ai<span className="brand-suffix"> news</span>
             </Link>
             <nav className="main-nav">
+              <Link href="/topics" className="nav-link">
+                トピック
+              </Link>
               <Link href="/pricing" className="nav-link">
                 料金
               </Link>
