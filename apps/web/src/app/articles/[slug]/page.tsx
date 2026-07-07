@@ -2,8 +2,10 @@ import {
   getArticleBySlug,
   getLikeCount,
   getSubscriptionByUserId,
+  getUserTopicSlugs,
   isBookmarkedByUser,
   isLikedByUser,
+  listTopics,
 } from "@tech-ai-news/db";
 import { isActiveSubscription } from "@tech-ai-news/shared";
 import type { Metadata } from "next";
@@ -12,6 +14,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import { ArticleReactions } from "../../../components/ArticleReactions";
+import { ArticleTopicTags } from "../../../components/ArticleTopicTags";
 import { ShareLinks } from "../../../components/ShareLinks";
 import { auth } from "../../../lib/auth";
 import { getDb } from "../../../lib/db";
@@ -37,7 +40,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       type: "article",
       title: article.title,
       description: article.summary,
-      publishedTime: article.publishedAt,
+      publishedTime: article.originalPublishedAt ?? article.publishedAt,
       images: article.ogImageUrl ? [article.ogImageUrl] : undefined,
     },
   };
@@ -52,13 +55,17 @@ export default async function ArticlePage({ params }: PageProps) {
   if (!article || article.status !== "published") notFound();
 
   const session = await auth.api.getSession({ headers: await headers() });
-  const [subscription, likeCount, liked, bookmarked] = await Promise.all([
+  const [subscription, likeCount, liked, bookmarked, allTopics, followedTopicSlugs] = await Promise.all([
     session ? getSubscriptionByUserId(db, session.user.id) : null,
     getLikeCount(db, article.id),
     session ? isLikedByUser(db, session.user.id, article.id) : false,
     session ? isBookmarkedByUser(db, session.user.id, article.id) : false,
+    listTopics(db),
+    session ? getUserTopicSlugs(db, session.user.id) : [],
   ]);
   const canReadFull = isActiveSubscription(subscription?.status);
+  const topicNameBySlug = new Map(allTopics.map((t) => [t.slug, t.nameJa]));
+  const articleTopics = (article.topics ?? []).map((slug) => ({ slug, nameJa: topicNameBySlug.get(slug) ?? slug }));
 
   return (
     <main className="page">
@@ -73,7 +80,10 @@ export default async function ArticlePage({ params }: PageProps) {
           <span aria-hidden="true">·</span>
           <span>重要度 {article.importance}</span>
           <span aria-hidden="true">·</span>
-          <span>{new Date(article.publishedAt).toLocaleDateString("ja-JP")}</span>
+          <span>
+            {article.originalPublishedAt ? "原文公開: " : ""}
+            {new Date(article.originalPublishedAt ?? article.publishedAt).toLocaleDateString("ja-JP")}
+          </span>
         </p>
 
         {article.highlight && (
@@ -115,6 +125,15 @@ export default async function ArticlePage({ params }: PageProps) {
               </Link>
             </div>
           </div>
+        )}
+
+        {articleTopics.length > 0 && (
+          <ArticleTopicTags
+            articleSlug={article.slug}
+            topics={articleTopics}
+            isLoggedIn={session !== null}
+            initialFollowedSlugs={followedTopicSlugs}
+          />
         )}
       </article>
     </main>

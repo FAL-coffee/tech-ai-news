@@ -679,6 +679,53 @@ h1, h2, h3 {
   color: var(--text);
 }
 
+.article-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-sans);
+}
+
+.article-tags-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.topic-follow-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.topic-follow-badge:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.topic-follow-badge[data-followed="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.topic-follow-badge:not([data-followed="true"]):hover {
+  border-color: var(--text-faint);
+  color: var(--text);
+}
+
 .share-links {
   display: flex;
   align-items: center;

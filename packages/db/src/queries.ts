@@ -60,6 +60,7 @@ function mapArticle(row: any): Article {
     importance: row.importance,
     model: row.model,
     publishedAt: row.published_at,
+    originalPublishedAt: row.original_published_at,
     status: row.status,
     topics: row.topic_slugs ?? undefined,
   };
@@ -226,6 +227,7 @@ export interface NewArticleInput {
   model: string;
   embedding: number[];
   topicSlugs: string[];
+  originalPublishedAt?: string | null;
 }
 
 /** 記事挿入 + article_topics 紐付け + raw_items.status='generated' を1トランザクションで実行。 */
@@ -234,12 +236,12 @@ export async function insertArticleWithTopics(db: Db, input: NewArticleInput): P
     const [article] = await tx`
       insert into articles (
         raw_item_id, slug, title, summary, body, highlight, og_image_url,
-        original_url, source_name, importance, model, embedding
+        original_url, source_name, importance, model, embedding, original_published_at
       ) values (
         ${input.rawItemId}, ${input.slug}, ${input.title}, ${input.summary}, ${input.body},
         ${input.highlight}, ${input.ogImageUrl},
         ${input.originalUrl}, ${input.sourceName}, ${input.importance}, ${input.model},
-        ${toVectorLiteral(input.embedding)}::vector
+        ${toVectorLiteral(input.embedding)}::vector, ${input.originalPublishedAt ?? null}
       )
       returning id
     `;
@@ -529,6 +531,29 @@ export async function setUserTopics(db: Db, userId: string, topicSlugs: string[]
       `;
     }
   });
+}
+
+/** 他の選択トピックには触れず、1件だけ追加/解除する(記事ページのタグクリックからの追加用)。 */
+export async function toggleUserTopic(db: Db, userId: string, topicSlug: string): Promise<{ followed: boolean }> {
+  const [existing] = await db`
+    select 1 from user_topics ut join topics t on t.id = ut.topic_id
+    where ut.user_id = ${userId} and t.slug = ${topicSlug}
+  `;
+
+  if (existing) {
+    await db`
+      delete from user_topics
+      where user_id = ${userId} and topic_id = (select id from topics where slug = ${topicSlug})
+    `;
+    return { followed: false };
+  }
+
+  await db`
+    insert into user_topics (user_id, topic_id)
+    select ${userId}, t.id from topics t where t.slug = ${topicSlug}
+    on conflict do nothing
+  `;
+  return { followed: true };
 }
 
 // ---------------------------------------------------------------------------

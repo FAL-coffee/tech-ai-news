@@ -18,7 +18,7 @@ export function ArticleCard({ article }: { article: Article }) {
         <span aria-hidden="true">·</span>
         <span>重要度 {article.importance}</span>
         <span aria-hidden="true">·</span>
-        <span>{new Date(article.publishedAt).toLocaleDateString("ja-JP")}</span>
+        <span>{new Date(article.originalPublishedAt ?? article.publishedAt).toLocaleDateString("ja-JP")}</span>
       </p>
       {article.highlight && (
         <div className="highlight-callout">

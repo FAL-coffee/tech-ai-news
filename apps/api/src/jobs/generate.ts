@@ -57,6 +57,7 @@ export async function runGenerate(db?: Db): Promise<GenerateSummary> {
           model: process.env.GENERATE_MODEL ?? "claude-sonnet-5",
           embedding,
           topicSlugs: item.topics ?? [],
+          originalPublishedAt: item.publishedAt,
         });
 
         summary.generated += 1;
