@@ -2,12 +2,37 @@
 
 import type { SourceCandidate } from "@tech-ai-news/shared";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
+
+type SortKey = "trustScore" | "discoveryCount" | "createdAt";
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "trustScore", label: "信頼度スコアが高い順" },
+  { key: "discoveryCount", label: "発見回数が多い順" },
+  { key: "createdAt", label: "新着順" },
+];
+
+function trustScoreTier(score: number): "high" | "medium" | "low" {
+  if (score >= 80) return "high";
+  if (score >= 50) return "medium";
+  return "low";
+}
 
 export function SourceCandidateList({ candidates }: { candidates: SourceCandidate[] }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  const [sortKey, setSortKey] = useState<SortKey>("trustScore");
+
+  const sortedCandidates = useMemo(() => {
+    const copy = [...candidates];
+    copy.sort((a, b) => {
+      if (sortKey === "trustScore") return b.trustScore - a.trustScore;
+      if (sortKey === "discoveryCount") return b.discoveryCount - a.discoveryCount;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    return copy;
+  }, [candidates, sortKey]);
 
   const allSelected = candidates.length > 0 && selected.size === candidates.length;
 
@@ -48,6 +73,16 @@ export function SourceCandidateList({ candidates }: { candidates: SourceCandidat
             <input type="checkbox" checked={allSelected} onChange={toggleAll} disabled={isPending} />
             <span>全選択({selected.size}/{candidates.length}件選択中)</span>
           </label>
+          <label className="candidate-sort-select">
+            並び替え:
+            <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="candidate-bulk-actions">
             <button
               type="button"
@@ -71,7 +106,7 @@ export function SourceCandidateList({ candidates }: { candidates: SourceCandidat
 
       <div className="candidate-list">
         {candidates.length === 0 && <div className="empty-state">未承認の収集先候補はありません。</div>}
-        {candidates.map((candidate) => (
+        {sortedCandidates.map((candidate) => (
           <div className="candidate-card" key={candidate.id}>
             <div className="candidate-card-header">
               <label className="consent-checkbox">
@@ -83,7 +118,12 @@ export function SourceCandidateList({ candidates }: { candidates: SourceCandidat
                 />
                 <h2 className="candidate-card-title">{candidate.domain}</h2>
               </label>
-              <span className="pill">発見 {candidate.discoveryCount} 回</span>
+              <div className="candidate-card-badges">
+                <span className={`trust-score-badge trust-score-${trustScoreTier(candidate.trustScore)}`}>
+                  信頼度スコア {candidate.trustScore}
+                </span>
+                <span className="pill">発見 {candidate.discoveryCount} 回</span>
+              </div>
             </div>
             <div className="candidate-card-body">
               <p>

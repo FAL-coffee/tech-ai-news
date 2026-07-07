@@ -1,5 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
+import { createDb } from "@tech-ai-news/db";
 import app from "./app";
+import { env } from "./env";
 import { runClassify } from "./jobs/classify";
 import { runCollect } from "./jobs/collect";
 import { runDigest } from "./jobs/digest";
@@ -46,9 +48,30 @@ export default {
 
     ctx.waitUntil(
       (async () => {
-        await runCollect();
-        await runClassify();
-        await runGenerate();
+        // collect→classify→generateを1回の実行内で連続して呼ぶため、接続を1本だけ作って使い回す
+        // (都度createDb()し直すとCloudflare Workers上でTCPソケットの再接続に失敗することがある)。
+        const db = createDb(env.DATABASE_URL);
+        try {
+          // 1フェーズの失敗が後続フェーズを止めないようにする(例: classifyが失敗しても、
+          // 既にselected状態の記事のgenerateは試みる)。
+          try {
+            await runCollect(db);
+          } catch (err) {
+            console.error("[scheduled] runCollect failed", err);
+          }
+          try {
+            await runClassify(db);
+          } catch (err) {
+            console.error("[scheduled] runClassify failed", err);
+          }
+          try {
+            await runGenerate(db);
+          } catch (err) {
+            console.error("[scheduled] runGenerate failed", err);
+          }
+        } finally {
+          await db.end({ timeout: 5 });
+        }
       })(),
     );
   },

@@ -1,9 +1,11 @@
 import {
+  approveSourceCandidate,
   createDb,
   insertRawItem,
   listEnabledSources,
   listKnownCandidateDomains,
   listTrustedDomains,
+  setSourceCandidateTrustScore,
   updateSourceFetchMeta,
   upsertSourceCandidate,
 } from "@tech-ai-news/db";
@@ -17,6 +19,7 @@ import { discoverFeed } from "../lib/feedDiscovery";
 import { scanHackerNews } from "../lib/hackernews";
 import { sha256 } from "../lib/hash";
 import { fetchPageText } from "../lib/pageContent";
+import { computeTrustScore, isAutoApprovable } from "../lib/trustScore";
 
 export interface CollectSummary {
   sourcesChecked: number;
@@ -25,6 +28,7 @@ export interface CollectSummary {
   inserted: number;
   skipped: number;
   candidatesDiscovered: number;
+  candidatesAutoApproved: number;
   errors: { source: string; message: string }[];
 }
 
@@ -135,13 +139,29 @@ async function collectHnSource(db: Db, source: Source, summary: CollectSummary):
     }
 
     try {
-      await upsertSourceCandidate(db, {
+      const candidate = await upsertSourceCandidate(db, {
         domain,
         sampleUrl,
         detectedFeedUrl: feed?.url ?? null,
         detectedFeedKind: feed?.kind ?? null,
       });
       summary.candidatesDiscovered += 1;
+
+      if (candidate) {
+        const trustInput = {
+          domain: candidate.domain,
+          discoveryCount: candidate.discoveryCount,
+          detectedFeedUrl: candidate.detectedFeedUrl,
+        };
+        await setSourceCandidateTrustScore(db, candidate.id, computeTrustScore(trustInput));
+
+        // 明らかに信頼できる(大手企業の公式ドメイン一致 かつ フィード検出済み)候補は、
+        // 人間の承認を待たずに直接sourcesへ登録する。判断基準の詳細はlib/trustScore.tsを参照。
+        if (isAutoApprovable(trustInput)) {
+          const { sourceId } = await approveSourceCandidate(db, candidate.id, null);
+          if (sourceId) summary.candidatesAutoApproved += 1;
+        }
+      }
     } catch (err) {
       console.warn(`[collect] hn: failed to record source candidate ${domain}: ${(err as Error).message}`);
     }
@@ -151,8 +171,14 @@ async function collectHnSource(db: Db, source: Source, summary: CollectSummary):
   await updateSourceFetchMeta(db, source.id, { etag: null, lastModified: null });
 }
 
-export async function runCollect(): Promise<CollectSummary> {
-  const db = createDb(env.DATABASE_URL);
+/**
+ * dbを渡さない場合は自前で接続を作って閉じる(CLIスクリプト等の単独実行向け)。
+ * 渡された場合は接続の開閉を呼び出し側に委ねる(worker.tsのscheduledハンドラのように
+ * collect→classify→generateを1回の実行内で連続して呼ぶ場合、都度接続を開閉すると
+ * Cloudflare Workers上でTCPソケットの再接続に失敗することがあるため、1本の接続を使い回す)。
+ */
+export async function runCollect(db?: Db): Promise<CollectSummary> {
+  const ownDb = db ?? createDb(env.DATABASE_URL);
   const summary: CollectSummary = {
     sourcesChecked: 0,
     fetched: 0,
@@ -160,22 +186,23 @@ export async function runCollect(): Promise<CollectSummary> {
     inserted: 0,
     skipped: 0,
     candidatesDiscovered: 0,
+    candidatesAutoApproved: 0,
     errors: [],
   };
 
   try {
-    const sources = await listEnabledSources(db);
+    const sources = await listEnabledSources(ownDb);
 
     for (const source of sources) {
       summary.sourcesChecked += 1;
       try {
         if (source.kind === "bluesky") {
-          await collectBlueskySource(db, source, summary);
+          await collectBlueskySource(ownDb, source, summary);
         } else if (source.kind === "hn_domain") {
-          await collectHnSource(db, source, summary);
+          await collectHnSource(ownDb, source, summary);
         } else {
           // rss / atom / github_releases はいずれもRSS/Atom形式で取得できる。
-          await collectFeedSource(db, source, summary);
+          await collectFeedSource(ownDb, source, summary);
         }
 
         // 相手サーバへの負荷を抑えるため、ソース間で軽くsleepする(行儀のよい巡回)。
@@ -186,7 +213,7 @@ export async function runCollect(): Promise<CollectSummary> {
       }
     }
   } finally {
-    await db.end({ timeout: 5 });
+    if (!db) await ownDb.end({ timeout: 5 });
   }
 
   return summary;

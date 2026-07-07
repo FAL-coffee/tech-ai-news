@@ -434,6 +434,7 @@ function mapSourceCandidate(row: any): SourceCandidate {
     sampleUrls: row.sample_urls ?? [],
     detectedFeedUrl: row.detected_feed_url,
     detectedFeedKind: row.detected_feed_kind,
+    trustScore: row.trust_score,
     status: row.status,
     resultingSourceId: row.resulting_source_id,
     reviewedBy: row.reviewed_by,
@@ -451,10 +452,14 @@ export interface UpsertSourceCandidateInput {
 
 /**
  * 既にpending以外(approved/rejected)の候補は更新しない(再提案で復活させない)。
- * sample_urlsは直近5件までに絞る。
+ * sample_urlsは直近5件までに絞る。信頼度スコアはdiscovery_countの増分後の値で算出する必要があるため
+ * (呼び出し側がスコアを計算できるように)更新後の行を返す。pending以外でブロックされた場合はnullを返す。
  */
-export async function upsertSourceCandidate(db: Db, input: UpsertSourceCandidateInput): Promise<void> {
-  await db`
+export async function upsertSourceCandidate(
+  db: Db,
+  input: UpsertSourceCandidateInput,
+): Promise<{ id: string; domain: string; discoveryCount: number; detectedFeedUrl: string | null } | null> {
+  const [row] = await db`
     insert into source_candidates (domain, discovery_count, sample_urls, detected_feed_url, detected_feed_kind)
     values (${input.domain}, 1, array[${input.sampleUrl}]::text[], ${input.detectedFeedUrl ?? null}, ${input.detectedFeedKind ?? null})
     on conflict (domain) do update set
@@ -471,12 +476,35 @@ export async function upsertSourceCandidate(db: Db, input: UpsertSourceCandidate
       detected_feed_kind = coalesce(source_candidates.detected_feed_kind, ${input.detectedFeedKind ?? null}),
       updated_at = now()
     where source_candidates.status = 'pending'
+    returning id, domain, discovery_count, detected_feed_url
   `;
+  if (!row) return null;
+  return {
+    id: row.id,
+    domain: row.domain,
+    discoveryCount: row.discovery_count,
+    detectedFeedUrl: row.detected_feed_url,
+  };
+}
+
+export async function setSourceCandidateTrustScore(db: Db, id: string, trustScore: number): Promise<void> {
+  await db`update source_candidates set trust_score = ${trustScore} where id = ${id}`;
 }
 
 export async function listSourceCandidates(db: Db, status: CandidateStatus): Promise<SourceCandidate[]> {
   const rows = await db`
-    select * from source_candidates where status = ${status} order by discovery_count desc, created_at desc
+    select * from source_candidates where status = ${status} order by trust_score desc, discovery_count desc, created_at desc
+  `;
+  return rows.map(mapSourceCandidate);
+}
+
+/** 信頼度スコアによる自動承認(reviewed_by is null)の履歴。admin画面での透明性表示用。 */
+export async function listAutoApprovedSourceCandidates(db: Db, limit: number): Promise<SourceCandidate[]> {
+  const rows = await db`
+    select * from source_candidates
+    where status = 'approved' and reviewed_by is null
+    order by reviewed_at desc
+    limit ${limit}
   `;
   return rows.map(mapSourceCandidate);
 }
@@ -485,11 +513,12 @@ export async function listSourceCandidates(db: Db, status: CandidateStatus): Pro
  * 承認: trusted_domainsへ追加し、フィード自動検出できていればsourcesにも登録する。
  * すでにpending以外(approved/rejected)の候補は無視する(承認→却下のような操作の重複で
  * trusted_domains/sourcesへの副作用だけが残ってしまう事故を防ぐため)。
+ * reviewedByがnullの場合は信頼度スコアに基づく自動承認(人間のレビューを介さない)を表す。
  */
 export async function approveSourceCandidate(
   db: Db,
   id: string,
-  reviewedBy: string,
+  reviewedBy: string | null,
 ): Promise<{ sourceId: string | null }> {
   return db.begin(async (tx) => {
     const [candidate] = await tx`select * from source_candidates where id = ${id} and status = 'pending'`;
@@ -497,9 +526,12 @@ export async function approveSourceCandidate(
       return { sourceId: null };
     }
 
+    const note = reviewedBy
+      ? "Hacker News経由の発見から承認"
+      : "信頼度スコアによる自動承認(大手企業の公式ドメイン一致+フィード検出済み)";
     await tx`
       insert into trusted_domains (domain, note)
-      values (${candidate.domain}, 'Hacker News経由の発見から承認')
+      values (${candidate.domain}, ${note})
       on conflict (domain) do nothing
     `;
 

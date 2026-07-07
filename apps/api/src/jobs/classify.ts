@@ -42,8 +42,14 @@ async function saveSuggestedTopic(
   return true;
 }
 
-export async function runClassify(): Promise<ClassifySummary> {
-  const db = createDb(env.DATABASE_URL);
+/**
+ * dbを渡さない場合は自前で接続を作って閉じる(CLIスクリプト等の単独実行向け)。
+ * 渡された場合は接続の開閉を呼び出し側に委ねる(worker.tsのscheduledハンドラのように
+ * collect→classify→generateを1回の実行内で連続して呼ぶ場合、都度接続を開閉すると
+ * Cloudflare Workers上でTCPソケットの再接続に失敗することがあるため、1本の接続を使い回す)。
+ */
+export async function runClassify(db?: Db): Promise<ClassifySummary> {
+  const ownDb = db ?? createDb(env.DATABASE_URL);
   const summary: ClassifySummary = {
     processed: 0,
     selected: 0,
@@ -53,9 +59,9 @@ export async function runClassify(): Promise<ClassifySummary> {
   };
 
   try {
-    const topicSlugs = await listTopicSlugs(db);
+    const topicSlugs = await listTopicSlugs(ownDb);
     const knownTopicSlugs = new Set(topicSlugs);
-    const items = await listRawItemsByStatusWithSource(db, "new", env.CLASSIFY_BATCH_SIZE);
+    const items = await listRawItemsByStatusWithSource(ownDb, "new", env.CLASSIFY_BATCH_SIZE);
 
     for (const item of items) {
       summary.processed += 1;
@@ -71,7 +77,7 @@ export async function runClassify(): Promise<ClassifySummary> {
         );
 
         const isSelected = result.worthArticle && result.importance >= env.IMPORTANCE_THRESHOLD;
-        await updateRawItemClassification(db, item.id, {
+        await updateRawItemClassification(ownDb, item.id, {
           importance: result.importance,
           topics: result.topics.map((t) => t.slug),
           status: isSelected ? "selected" : "skipped",
@@ -82,7 +88,7 @@ export async function runClassify(): Promise<ClassifySummary> {
 
         if (result.suggestedTopic) {
           try {
-            const saved = await saveSuggestedTopic(db, result.suggestedTopic, knownTopicSlugs);
+            const saved = await saveSuggestedTopic(ownDb, result.suggestedTopic, knownTopicSlugs);
             if (saved) summary.topicCandidatesDiscovered += 1;
           } catch (err) {
             console.warn(`[classify] failed to save suggested topic for "${item.title}": ${(err as Error).message}`);
@@ -90,12 +96,12 @@ export async function runClassify(): Promise<ClassifySummary> {
         }
       } catch (err) {
         // status='new' のまま残すことで次回実行時に自動リトライされる。
-        await recordRawItemError(db, item.id, (err as Error).message);
+        await recordRawItemError(ownDb, item.id, (err as Error).message);
         summary.errors.push({ id: item.id, title: item.title, message: (err as Error).message });
       }
     }
   } finally {
-    await db.end({ timeout: 5 });
+    if (!db) await ownDb.end({ timeout: 5 });
   }
 
   return summary;

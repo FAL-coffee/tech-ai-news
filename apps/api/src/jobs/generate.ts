@@ -1,4 +1,5 @@
 ﻿import { createDb, insertArticleWithTopics, listSelectedRawItems, recordRawItemError } from "@tech-ai-news/db";
+import type { Db } from "@tech-ai-news/db";
 import { embedText, generateArticle } from "@tech-ai-news/llm";
 import { env } from "../env";
 import { fetchOgImage } from "../lib/ogImage";
@@ -10,12 +11,18 @@ export interface GenerateSummary {
   errors: { id: string; title: string; message: string }[];
 }
 
-export async function runGenerate(): Promise<GenerateSummary> {
-  const db = createDb(env.DATABASE_URL);
+/**
+ * dbを渡さない場合は自前で接続を作って閉じる(CLIスクリプト等の単独実行向け)。
+ * 渡された場合は接続の開閉を呼び出し側に委ねる(worker.tsのscheduledハンドラのように
+ * collect→classify→generateを1回の実行内で連続して呼ぶ場合、都度接続を開閉すると
+ * Cloudflare Workers上でTCPソケットの再接続に失敗することがあるため、1本の接続を使い回す)。
+ */
+export async function runGenerate(db?: Db): Promise<GenerateSummary> {
+  const ownDb = db ?? createDb(env.DATABASE_URL);
   const summary: GenerateSummary = { processed: 0, generated: 0, errors: [] };
 
   try {
-    const items = await listSelectedRawItems(db, env.MAX_GENERATE_PER_RUN);
+    const items = await listSelectedRawItems(ownDb, env.MAX_GENERATE_PER_RUN);
 
     for (const item of items) {
       summary.processed += 1;
@@ -35,7 +42,7 @@ export async function runGenerate(): Promise<GenerateSummary> {
         // slugは生成された日本語タイトルではなく、原文(英語)タイトルから作る(slugifyは非ASCII文字を保持できない)。
         const slug = `${slugify(item.title)}-${item.id.slice(0, 6)}`;
 
-        await insertArticleWithTopics(db, {
+        await insertArticleWithTopics(ownDb, {
           rawItemId: item.id,
           slug,
           title: article.title,
@@ -55,12 +62,12 @@ export async function runGenerate(): Promise<GenerateSummary> {
         summary.generated += 1;
       } catch (err) {
         // status='selected' のまま残すことで次回実行時に自動リトライされる。
-        await recordRawItemError(db, item.id, (err as Error).message);
+        await recordRawItemError(ownDb, item.id, (err as Error).message);
         summary.errors.push({ id: item.id, title: item.title, message: (err as Error).message });
       }
     }
   } finally {
-    await db.end({ timeout: 5 });
+    if (!db) await ownDb.end({ timeout: 5 });
   }
 
   return summary;

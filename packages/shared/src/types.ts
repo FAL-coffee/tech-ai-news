@@ -99,6 +99,7 @@ export interface SourceCandidate {
   sampleUrls: string[];
   detectedFeedUrl: string | null;
   detectedFeedKind: "rss" | "atom" | null;
+  trustScore: number;
   status: CandidateStatus;
   resultingSourceId: string | null;
   reviewedBy: string | null;
