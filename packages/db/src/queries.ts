@@ -1,4 +1,4 @@
-﻿import type { Db } from "./index";
+﻿import type postgres from "postgres";
 import type {
   Article,
   CandidateStatus,
@@ -12,6 +12,10 @@ import type {
   Topic,
   TopicCandidate,
 } from "@tech-ai-news/shared";
+import type { Db } from "./index";
+
+/** db.begin()内で渡されるトランザクションオブジェクトの型(Dbとタグ付きテンプレートの呼び出し方は同じ)。 */
+type Tx = postgres.TransactionSql<{}>;
 
 function mapSource(row: any): Source {
   return {
@@ -83,6 +87,51 @@ export async function listAllSourceNames(db: Db): Promise<string[]> {
   return rows.map((r) => r.name);
 }
 
+function slugifyTopicName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\.js$/, "js")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * ソース名(例: "Vercel Blog", "AWS News Blog", "elastic.co")から技術名らしい表記を取り出す。
+ * 末尾の括弧書き(Bluesky等)・種別語(Blog/News/Releases/Changelog)を除去し、
+ * ドメイン名そのものがソース名の場合(候補承認経由)は先頭を大文字にする。
+ */
+function deriveTopicNameFromSourceName(sourceName: string): string {
+  let name = sourceName.replace(/\s*\([^)]*\)\s*$/g, "").trim();
+  const suffixPattern = /\s+(Blog|News|Releases|Changelog)$/i;
+  while (suffixPattern.test(name)) {
+    name = name.replace(suffixPattern, "").trim();
+  }
+  // ".js"で終わる製品名(Next.js, Node.js, Three.js等)はドメインとして誤検出しないよう除外する。
+  if (!/\.js$/i.test(name)) {
+    const domainMatch = name.match(/^([a-z0-9-]+)\.[a-z]{2,}$/i);
+    if (domainMatch) {
+      name = domainMatch[1].charAt(0).toUpperCase() + domainMatch[1].slice(1);
+    }
+  }
+  return name || sourceName;
+}
+
+/**
+ * sourcesに新規追加された技術に対応するトピックが無ければ自動作成する。
+ * 今後追加される言語・フレームワーク・ライブラリも自動でタグ化できるようにするため、
+ * insertSource/approveSourceCandidateの両方から呼ぶ。既に同じslugがあれば何もしない。
+ */
+export async function ensureTopicForSource(db: Db | Tx, sourceName: string): Promise<void> {
+  const name = deriveTopicNameFromSourceName(sourceName);
+  const slug = slugifyTopicName(name);
+  if (!slug) return;
+  await db`
+    insert into topics (slug, name_ja, name_en)
+    values (${slug}, ${name}, ${name})
+    on conflict (slug) do nothing
+  `;
+}
+
 export interface InsertSourceInput {
   name: string;
   kind: Source["kind"];
@@ -97,7 +146,9 @@ export async function insertSource(db: Db, input: InsertSourceInput): Promise<{ 
     on conflict (url) do nothing
     returning id
   `;
-  return { inserted: rows.length > 0 };
+  const inserted = rows.length > 0;
+  if (inserted) await ensureTopicForSource(db, input.name);
+  return { inserted };
 }
 
 export async function updateSourceFetchMeta(
@@ -700,6 +751,7 @@ export async function approveSourceCandidate(
         returning id
       `;
       sourceId = source.id;
+      await ensureTopicForSource(tx, candidate.domain);
     }
 
     await tx`
