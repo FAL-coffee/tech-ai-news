@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const db = getDb();
   const article = await getArticleBySlug(db, slug);
-  if (!article) return {};
+  if (!article || article.status !== "published") return {};
 
   return {
     title: article.title,
@@ -48,7 +48,8 @@ export default async function ArticlePage({ params }: PageProps) {
 
   const db = getDb();
   const article = await getArticleBySlug(db, slug);
-  if (!article) notFound();
+  // 未公開(draft)・取り下げ済み(retracted)の記事は直接URLでも閲覧不可にする。
+  if (!article || article.status !== "published") notFound();
 
   const session = await auth.api.getSession({ headers: await headers() });
   const [subscription, likeCount, liked, bookmarked] = await Promise.all([

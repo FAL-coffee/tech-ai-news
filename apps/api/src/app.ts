@@ -40,7 +40,7 @@ app.get("/articles/:slug", async (c) => {
   const db = createDb(env.DATABASE_URL);
   try {
     const article = await getArticleBySlug(db, c.req.param("slug"));
-    if (!article) return c.json({ error: "not found" }, 404);
+    if (!article || article.status !== "published") return c.json({ error: "not found" }, 404);
     return c.json(article);
   } finally {
     await db.end({ timeout: 5 });
