@@ -46,7 +46,7 @@ export const env = {
     return Number(process.env.IMPORTANCE_THRESHOLD ?? 60);
   },
   get CLASSIFY_BATCH_SIZE() {
-    return Number(process.env.CLASSIFY_BATCH_SIZE ?? 50);
+    return Number(process.env.CLASSIFY_BATCH_SIZE ?? 30);
   },
   get MAX_GENERATE_PER_RUN() {
     return Number(process.env.MAX_GENERATE_PER_RUN ?? 10);

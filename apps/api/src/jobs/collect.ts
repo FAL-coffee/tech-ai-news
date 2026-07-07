@@ -32,16 +32,24 @@ export interface CollectSummary {
   errors: { source: string; message: string }[];
 }
 
-// Cloudflare Workersは1回の実行あたりの外部リクエスト数に上限がある(無料プランは50件)。
-// discoverFeed()はドメインごとに最大10リクエストかかるため、新規ドメインが多いHNスキャン結果を
-// そのまま全件処理すると簡単に上限を超えてしまう。1回の実行で自動検出を試みる新規ドメイン数を
-// 制限し、残りは次回以降の実行に回す(候補自体はfeed未検出のまま先にDBへ記録するので取りこぼさない)。
-const MAX_FEED_DISCOVERY_PER_RUN = 5;
+// Cloudflare Workersは1回の実行あたりの外部リクエスト数に上限がある(無料プランは50件。実測でも
+// 1実行あたりのsubrequestsが50でキャップされることを確認済み)。discoverFeed()はドメインごとに
+// 最大10リクエストかかるため、新規ドメインが多いHNスキャン結果をそのまま全件処理すると簡単に
+// 上限を超えてしまう。1回の実行で自動検出を試みる新規ドメイン数を制限し、残りは次回以降の実行に
+// 回す(候補自体はfeed未検出のまま先にDBへ記録するので取りこぼさない)。
+const MAX_FEED_DISCOVERY_PER_RUN = 2;
 
-// sources件数が増えるとcollect単体でもサブリクエスト数/実行時間を圧迫し、後続のclassify/generateが
-// 実行される前にCloudflare Workersの上限に達するリスクがある。1回の実行で処理するソース数を制限し、
-// listEnabledSources()が古い順(未取得優先)に返す前提で、複数回の実行にわたって全ソースを巡回する。
-const MAX_SOURCES_PER_RUN = 40;
+// sources件数が増えるとcollect単体でも1回の実行あたりの外部リクエスト数上限(50件、上記参照)に
+// 達するリスクがある。1回の実行で処理するソース数を制限し、listEnabledSources()が古い順
+// (未取得優先)に返す前提で、複数回の実行にわたって全ソースを巡回する。HN候補発見分の
+// リクエストも同じ予算を消費するため、余裕を持った値にしている。
+const MAX_SOURCES_PER_RUN = 25;
+
+// Hacker News経由で見つかった信頼済みドメインの記事は、本文取得のために1件ごとに追加の
+// リクエストを消費する。件数が多い回(話題の日等)に上限を超えないよう上限を設ける
+// (取りこぼした分は簡易メタ情報のまま収集され、次回以降にリトライされるわけではないが、
+// HN投稿へのリンクからいつでも再取得できるため実害は小さい)。
+const MAX_HN_ENRICHMENT_PER_RUN = 15;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -112,7 +120,7 @@ async function collectHnSource(db: Db, source: Source, summary: CollectSummary):
   // リンク先(信頼済みドメインのみ)の本文を取得して置き換える。取得に失敗した場合は
   // 簡易メタ情報のまま続行する(取りこぼすよりはマシ)。
   const enriched: { link: string; title: string; contentText: string | null; isoDate: string | null }[] = [];
-  for (const item of trustedItems) {
+  for (const item of trustedItems.slice(0, MAX_HN_ENRICHMENT_PER_RUN)) {
     try {
       const pageText = await fetchPageText(item.link);
       enriched.push({ ...item, contentText: pageText || item.contentText });
@@ -122,6 +130,8 @@ async function collectHnSource(db: Db, source: Source, summary: CollectSummary):
     }
     await sleep(300);
   }
+  // 上限を超えた分は本文取得なしの簡易メタ情報のまま収集する(取りこぼすよりはマシ)。
+  enriched.push(...trustedItems.slice(MAX_HN_ENRICHMENT_PER_RUN));
   await insertItems(db, source, enriched, summary);
 
   // 信頼済みでない新規ドメインは収集先候補として提案する(コンテンツは収集しない)。

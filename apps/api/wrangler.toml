@@ -14,11 +14,14 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 NEXT_PUBLIC_APP_URL = "https://fal-tech-ai-news.vercel.app"
 IMPORTANCE_THRESHOLD = "60"
-CLASSIFY_BATCH_SIZE = "50"
+CLASSIFY_BATCH_SIZE = "30"
 MAX_GENERATE_PER_RUN = "10"
 
 [triggers]
-# 30分おきにcollect→classify→generate、UTC22:00(JST7:00)に1日1回メールダイジェスト送信、
-# 3日おきUTC3:00(JST12:00)にAIによるトレンド技術発見(discoverTrends)を実行。
-# 間隔を変える場合は src/worker.ts の DIGEST_CRON / DISCOVER_TRENDS_CRON 定数とここを両方書き換えること。
-crons = ["*/30 * * * *", "0 22 * * *", "0 3 */3 * *"]
+# collect/classify/generateは1回の実行あたり外部リクエスト50件の上限(無料プラン)を独立して
+# 使えるように別々のcronに分けている(同一実行内で連続実行すると、collectがsources件数増加で
+# 予算の大半を使い切り、classify/generateが失敗する事故が実際に発生したため)。
+# UTC22:00(JST7:00)に1日1回メールダイジェスト送信、3日おきUTC3:00(JST12:00)にAIによる
+# トレンド技術発見(discoverTrends)を実行。間隔を変える場合は src/worker.ts の対応する
+# *_CRON 定数とここを両方書き換えること。
+crons = ["0,30 * * * *", "10,40 * * * *", "20,50 * * * *", "0 22 * * *", "0 3 */3 * *"]
