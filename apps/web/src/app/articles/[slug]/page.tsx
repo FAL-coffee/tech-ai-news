@@ -13,6 +13,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
+import { ArticleImage } from "../../../components/ArticleImage";
 import { ArticleReactions } from "../../../components/ArticleReactions";
 import { ArticleTopicTags } from "../../../components/ArticleTopicTags";
 import { ShareLinks } from "../../../components/ShareLinks";
@@ -71,9 +72,12 @@ export default async function ArticlePage({ params }: PageProps) {
     <main className="page">
       <article className="article-detail">
         <h1>{article.title}</h1>
-        {article.ogImageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={article.ogImageUrl} alt="" className="article-hero-image" />
+        {article.ogImageUrl ? (
+          <ArticleImage src={article.ogImageUrl} className="article-hero-image" lazy={false} />
+        ) : (
+          <div className="article-hero-image no-image-placeholder">
+            <span>tech/ai news</span>
+          </div>
         )}
         <p className="meta">
           <span>{article.sourceName}</span>

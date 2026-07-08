@@ -20,6 +20,12 @@ import { appUrl } from "../../lib/site";
 
 export const dynamic = "force-dynamic";
 
+function planStatusLabel(status: string | undefined): string {
+  if (status === "trialing") return "トライアル中";
+  if (status === "active") return "有効";
+  return status ?? "";
+}
+
 export default async function AccountPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
@@ -54,9 +60,26 @@ export default async function AccountPage() {
             <span className="status-badge status-badge-active">無料会員(特別付与)</span>
             <p className="meta">運営より無料で全文記事の閲覧が許可されています。</p>
           </>
+        ) : active && subscription?.cancelAtPeriodEnd ? (
+          <>
+            <span className="status-badge status-badge-canceling">解約手続き済み</span>
+            {subscription?.currentPeriodEnd && (
+              <p className="meta">
+                {new Date(subscription.currentPeriodEnd).toLocaleDateString("ja-JP")}
+                まで引き続きご利用いただけます。それ以降は自動更新されません。
+              </p>
+            )}
+            <div className="card-actions">
+              <form action="/api/billing/portal" method="post">
+                <button type="submit" className="btn btn-secondary">
+                  お支払い方法・請求情報を管理
+                </button>
+              </form>
+            </div>
+          </>
         ) : active ? (
           <>
-            <span className="status-badge status-badge-active">有料会員 · {subscription?.status}</span>
+            <span className="status-badge status-badge-active">有料会員 · {planStatusLabel(subscription?.status)}</span>
             {subscription?.currentPeriodEnd && (
               <p className="meta">
                 次回更新日: {new Date(subscription.currentPeriodEnd).toLocaleDateString("ja-JP")}

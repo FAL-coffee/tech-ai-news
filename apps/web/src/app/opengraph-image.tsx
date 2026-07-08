@@ -49,7 +49,7 @@ export default function OpengraphImage() {
             maxWidth: 900,
           }}
         >
-          公式ブログ・公式アカウントの一次情報を、AIが日本語記事として再構成してお届けします。
+          まとめでも翻訳でもない。公式発表を、AIが日本語でわかりやすく。
         </div>
       </div>
     ),

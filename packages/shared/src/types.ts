@@ -74,6 +74,7 @@ export interface Subscription {
   status: SubscriptionStatus;
   plan: string;
   currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
 }
 
 export interface EmailPreference {

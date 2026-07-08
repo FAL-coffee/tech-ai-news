@@ -525,6 +525,7 @@ function mapSubscription(row: any): Subscription {
     status: row.status,
     plan: row.plan,
     currentPeriodEnd: row.current_period_end,
+    cancelAtPeriodEnd: row.cancel_at_period_end,
   };
 }
 
@@ -540,15 +541,16 @@ export interface UpsertSubscriptionInput {
   status: SubscriptionStatus;
   plan?: string;
   currentPeriodEnd: string | null;
+  cancelAtPeriodEnd?: boolean;
 }
 
 /** Stripeのwebhookから呼ぶ。user_idで一意なのでON CONFLICTで洗い替えする。 */
 export async function upsertSubscription(db: Db, input: UpsertSubscriptionInput): Promise<void> {
   await db`
-    insert into subscriptions (user_id, stripe_customer_id, stripe_subscription_id, status, plan, current_period_end, updated_at)
+    insert into subscriptions (user_id, stripe_customer_id, stripe_subscription_id, status, plan, current_period_end, cancel_at_period_end, updated_at)
     values (
       ${input.userId}, ${input.stripeCustomerId}, ${input.stripeSubscriptionId},
-      ${input.status}, ${input.plan ?? "monthly"}, ${input.currentPeriodEnd}, now()
+      ${input.status}, ${input.plan ?? "monthly"}, ${input.currentPeriodEnd}, ${input.cancelAtPeriodEnd ?? false}, now()
     )
     on conflict (user_id) do update set
       stripe_customer_id = excluded.stripe_customer_id,
@@ -556,6 +558,7 @@ export async function upsertSubscription(db: Db, input: UpsertSubscriptionInput)
       status = excluded.status,
       plan = excluded.plan,
       current_period_end = excluded.current_period_end,
+      cancel_at_period_end = excluded.cancel_at_period_end,
       updated_at = now()
   `;
 }

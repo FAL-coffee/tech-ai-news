@@ -57,7 +57,7 @@ export default async function HomePage({ searchParams }: PageProps) {
       <div className="hero">
         <span className="hero-eyebrow">Primary Sources Only</span>
         <h1 className="hero-title">Tech / AI ニュース</h1>
-        <p className="hero-subtitle">公式ブログ・公式アカウントなどの一次情報を、AIが日本語記事として再構成してお届けします。</p>
+        <p className="hero-subtitle">まとめでも翻訳でもない。公式発表を、AIが日本語でわかりやすく。</p>
       </div>
 
       <form className="search-bar" action="/" method="get">

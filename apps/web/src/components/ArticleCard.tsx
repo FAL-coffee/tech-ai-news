@@ -1,15 +1,19 @@
 import Link from "next/link";
 import type { Article } from "@tech-ai-news/shared";
+import { ArticleImage } from "./ArticleImage";
 
 export function ArticleCard({ article }: { article: Article }) {
   return (
     <article className="article-card">
-      {article.ogImageUrl && (
-        <Link href={`/articles/${article.slug}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={article.ogImageUrl} alt="" className="article-card-image" loading="lazy" />
-        </Link>
-      )}
+      <Link href={`/articles/${article.slug}`}>
+        {article.ogImageUrl ? (
+          <ArticleImage src={article.ogImageUrl} className="article-card-image" />
+        ) : (
+          <div className="article-card-image no-image-placeholder">
+            <span>tech/ai news</span>
+          </div>
+        )}
+      </Link>
       <h2>
         <Link href={`/articles/${article.slug}`}>{article.title}</Link>
       </h2>

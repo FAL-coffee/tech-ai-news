@@ -48,6 +48,7 @@ export async function POST(request: Request) {
             stripeSubscriptionId: subscription.id,
             status: subscription.status,
             currentPeriodEnd: toIso(subscription.items.data[0]?.current_period_end),
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
           });
         }
         break;
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
             stripeSubscriptionId: subscription.id,
             status: subscription.status,
             currentPeriodEnd: toIso(subscription.items.data[0]?.current_period_end),
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
           });
         }
         break;
