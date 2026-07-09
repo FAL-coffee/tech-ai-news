@@ -1624,3 +1624,228 @@ form {
   padding: 0;
   list-style: none;
 }
+
+/* --- レスポンシブ(SP)対応 --- */
+@media (max-width: 720px) {
+  :root {
+    --header-h: 56px;
+  }
+
+  .page {
+    padding: 1.75rem 1.1rem 4rem;
+  }
+
+  /* ヘッダー: ナビをはみ出しても横スクロールできるようにし、リンクを詰める */
+  .site-header-inner {
+    padding-inline: 1.1rem;
+    gap: 0.75rem;
+  }
+
+  .main-nav {
+    gap: 0.1rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .main-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .hero-title {
+    font-size: 1.65rem;
+  }
+
+  .hero-subtitle {
+    font-size: 0.92rem;
+  }
+
+  .header {
+    flex-wrap: wrap;
+  }
+
+  .topic-filter {
+    flex-wrap: wrap;
+  }
+
+  /* 記事一覧・おすすめ */
+  .recommended-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .article-card {
+    padding: 1.5rem 0;
+  }
+
+  .article-card h2 {
+    font-size: 1.15rem;
+  }
+
+  .topics {
+    gap: 0.5rem 0.9rem;
+  }
+
+  /* 記事詳細 */
+  .article-detail h1 {
+    font-size: 1.5rem;
+  }
+
+  .article-body {
+    font-size: 0.98rem;
+  }
+
+  .article-body h2 {
+    font-size: 1.2rem;
+  }
+
+  .highlight-callout {
+    font-size: 0.92rem;
+    padding: 0.75rem 0.95rem;
+  }
+
+  .paywall {
+    padding: 1.4rem 1.2rem;
+  }
+
+  .paywall-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* カード・フォーム類 */
+  .card {
+    padding: 1.3rem 1.15rem;
+  }
+
+  .auth-card,
+  .pricing-card {
+    padding: 1.75rem 1.35rem;
+  }
+
+  .account-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .topic-save-row {
+    flex-wrap: wrap;
+  }
+
+  /* フッター */
+  .site-footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.1rem;
+  }
+
+  .footer-links {
+    flex-wrap: wrap;
+    gap: 0.6rem 1.2rem;
+  }
+
+  /* admin */
+  .admin-tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .admin-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-tab {
+    white-space: nowrap;
+  }
+
+  .candidate-bulk-bar {
+    position: static;
+  }
+
+  .candidate-actions {
+    flex-wrap: wrap;
+  }
+
+  .search-bar input {
+    max-width: none;
+  }
+
+  /* 法的ページの表は列を縦積みにして読めるようにする */
+  .legal-table th,
+  .legal-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .legal-table th {
+    border-bottom: none;
+  }
+
+  .legal-table tr + tr th {
+    border-top: none;
+  }
+
+  .legal-table td {
+    border-top: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: 1.5rem 1rem 3.5rem;
+  }
+
+  .site-header-inner {
+    padding-inline: 1rem;
+  }
+
+  .brand {
+    font-size: 1.02rem;
+  }
+
+  .nav-link {
+    padding: 0.35rem 0.45rem;
+    font-size: 0.78rem;
+  }
+
+  .hero-title {
+    font-size: 1.45rem;
+  }
+
+  .article-detail h1 {
+    font-size: 1.35rem;
+  }
+
+  .topics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.7rem;
+  }
+
+  .topic-count-card {
+    padding: 1rem 1.1rem;
+  }
+
+  .topic-count-value {
+    font-size: 1.6rem;
+  }
+
+  .admin-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.7rem;
+  }
+
+  .share-links,
+  .article-reactions {
+    gap: 0.5rem;
+  }
+
+  .reaction-button {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+  }
+}

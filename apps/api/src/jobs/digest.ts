@@ -22,6 +22,35 @@ export interface DigestSummary {
 const DEFAULT_LOOKBACK_HOURS = 48;
 const MAX_ARTICLES_PER_DIGEST = 10;
 
+function formatJstDate(iso: string): string {
+  return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" }).format(
+    new Date(iso),
+  );
+}
+
+interface PlainTextArticle {
+  slug: string;
+  title: string;
+  summary: string;
+  sourceName: string;
+  publishedDate: string;
+}
+
+function buildPlainText(articles: PlainTextArticle[], siteUrl: string, unsubscribeUrl: string): string {
+  const items = articles
+    .map((a) => `■ ${a.title}\n  ${a.sourceName} · ${a.publishedDate}\n  ${a.summary}\n  ${siteUrl}/articles/${a.slug}`)
+    .join("\n\n");
+  return [
+    `tech/ai news — 新着記事${articles.length}件`,
+    "",
+    items,
+    "",
+    "---",
+    "このメールは tech/ai news のトピック購読設定に基づいて配信されています。",
+    `配信停止: ${unsubscribeUrl}`,
+  ].join("\n");
+}
+
 export async function runDigest(): Promise<DigestSummary> {
   const db = createDb(env.DATABASE_URL);
   const summary: DigestSummary = { recipientsChecked: 0, emailsSent: 0, skippedNoNewArticles: 0, errors: [] };
@@ -53,14 +82,17 @@ export async function runDigest(): Promise<DigestSummary> {
         }
 
         const unsubscribeUrl = `${siteUrl}/unsubscribe?token=${recipient.unsubscribeToken}`;
+        const oneClickUnsubscribeUrl = `${siteUrl}/api/unsubscribe?token=${recipient.unsubscribeToken}`;
+        const digestArticles = articles.map((a) => ({
+          slug: a.slug,
+          title: a.title,
+          summary: a.summary,
+          sourceName: a.sourceName,
+          publishedDate: formatJstDate(a.originalPublishedAt ?? a.publishedAt),
+        }));
         const html = await render(
           DigestEmail({
-            articles: articles.map((a) => ({
-              slug: a.slug,
-              title: a.title,
-              summary: a.summary,
-              sourceName: a.sourceName,
-            })),
+            articles: digestArticles,
             siteUrl,
             unsubscribeUrl,
           }),
@@ -69,10 +101,16 @@ export async function runDigest(): Promise<DigestSummary> {
         const result = await getResend().emails.send({
           from: fromEmail,
           to: recipient.email,
-          subject: `[tech/ai news] 新着記事${articles.length}件`,
+          subject: `[tech/ai news] ${formatJstDate(new Date().toISOString())}の新着記事${articles.length}件`,
           html,
-          // 特電法対応: List-Unsubscribeヘッダでメールクライアント標準の配信停止にも対応する。
-          headers: { "List-Unsubscribe": `<${unsubscribeUrl}>` },
+          // HTMLを表示できない環境・迷惑メール判定対策のためプレーンテキスト版も同梱する。
+          text: buildPlainText(digestArticles, siteUrl, unsubscribeUrl),
+          headers: {
+            // 特電法対応: List-Unsubscribeヘッダでメールクライアント標準の配信停止にも対応する。
+            // RFC 8058: Gmail/Yahoo!の一括送信者要件であるワンクリック配信停止(POST)にも対応する。
+            "List-Unsubscribe": `<${oneClickUnsubscribeUrl}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
         });
 
         if (result.error) {

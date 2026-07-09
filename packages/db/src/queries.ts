@@ -65,6 +65,7 @@ function mapArticle(row: any): Article {
     model: row.model,
     publishedAt: row.published_at,
     originalPublishedAt: row.original_published_at,
+    updatedAt: row.updated_at,
     status: row.status,
     topics: row.topic_slugs ?? undefined,
   };
@@ -957,6 +958,21 @@ export async function addSuppression(db: Db, email: string, reason: string): Pro
 export async function isSuppressed(db: Db, email: string): Promise<boolean> {
   const rows = await db`select 1 from suppressions where email = ${email}`;
   return rows.length > 0;
+}
+
+export interface RecordEmailEventInput {
+  resendEmailId: string | null;
+  email: string;
+  eventType: string;
+  payload: unknown;
+}
+
+/** Resend webhookから受け取った配信イベント(delivered/bounced/complained/opened/clicked等)を記録する。 */
+export async function recordEmailEvent(db: Db, input: RecordEmailEventInput): Promise<void> {
+  await db`
+    insert into email_events (resend_email_id, email, event_type, payload)
+    values (${input.resendEmailId}, ${input.email}, ${input.eventType}, ${JSON.stringify(input.payload)}::jsonb)
+  `;
 }
 
 // ---------------------------------------------------------------------------

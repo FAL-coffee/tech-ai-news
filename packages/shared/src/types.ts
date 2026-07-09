@@ -52,6 +52,7 @@ export interface Article {
   model: string;
   publishedAt: string;
   originalPublishedAt: string | null;
+  updatedAt: string;
   status: "draft" | "published" | "retracted";
   topics?: string[];
 }

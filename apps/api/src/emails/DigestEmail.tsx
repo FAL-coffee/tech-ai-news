@@ -1,8 +1,14 @@
+// tsxがtsconfig(jsx: react-jsx)を読み込めない環境(古いNode等)ではJSXがclassic変換に
+// フォールバックするため、どちらの変換でも動くようReactを明示的にインポートしておく。
+import * as React from "react";
+
 export interface DigestArticle {
   slug: string;
   title: string;
   summary: string;
   sourceName: string;
+  /** 表示用に整形済みの公開日(例: "7/9")。 */
+  publishedDate: string;
 }
 
 export interface DigestEmailProps {
@@ -111,7 +117,9 @@ export function DigestEmail({ articles, siteUrl, unsubscribeUrl }: DigestEmailPr
                   {article.title}
                 </a>
               </h2>
-              <p style={styles.meta}>{article.sourceName}</p>
+              <p style={styles.meta}>
+                {article.sourceName} · {article.publishedDate}
+              </p>
               <p style={styles.summary}>{article.summary}</p>
               <a href={`${siteUrl}/articles/${article.slug}`} style={styles.readMore}>
                 続きを読む →

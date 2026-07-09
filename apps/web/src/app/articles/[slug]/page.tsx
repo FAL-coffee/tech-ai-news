@@ -42,6 +42,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: article.title,
       description: article.summary,
       publishedTime: article.originalPublishedAt ?? article.publishedAt,
+      modifiedTime: article.updatedAt,
       images: article.ogImageUrl ? [article.ogImageUrl] : undefined,
     },
   };
@@ -67,6 +68,8 @@ export default async function ArticlePage({ params }: PageProps) {
   const canReadFull = isActiveSubscription(subscription?.status);
   const topicNameBySlug = new Map(allTopics.map((t) => [t.slug, t.nameJa]));
   const articleTopics = (article.topics ?? []).map((slug) => ({ slug, nameJa: topicNameBySlug.get(slug) ?? slug }));
+  // 生成時はpublished_atとupdated_atが同時刻。再生成・修正された記事にのみ更新日時を出す。
+  const wasUpdated = new Date(article.updatedAt).getTime() - new Date(article.publishedAt).getTime() > 60 * 1000;
 
   return (
     <main className="page">
@@ -88,6 +91,22 @@ export default async function ArticlePage({ params }: PageProps) {
             {article.originalPublishedAt ? "原文公開: " : ""}
             {new Date(article.originalPublishedAt ?? article.publishedAt).toLocaleDateString("ja-JP")}
           </span>
+          {wasUpdated && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>
+                更新:{" "}
+                {new Date(article.updatedAt).toLocaleString("ja-JP", {
+                  timeZone: "Asia/Tokyo",
+                  year: "numeric",
+                  month: "numeric",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </>
+          )}
         </p>
 
         {article.highlight && (

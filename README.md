@@ -58,6 +58,7 @@ cp .env.example .env
 | `ADMIN_EMAILS` | 収集先候補・タグ候補の承認画面(`/admin`)へのアクセスを許可するメールアドレス(カンマ区切り)。未設定の場合`/admin`は誰からもアクセスできません |
 | `RESEND_API_KEY` | メールダイジェスト配信に使用。[resend.com](https://resend.com)のダッシュボードで取得(要ユーザー登録)。未設定でも`DIGEST_ENABLED=false`(デフォルト)のままなら他機能に影響しません |
 | `RESEND_FROM_EMAIL` | ダイジェストの送信元アドレス。Resend側で送信元ドメインの認証(SPF/DKIM)が必要です |
+| `RESEND_WEBHOOK_SECRET` | Resendの配信イベントwebhook(`/api/resend/webhook`)の署名検証用シークレット(`whsec_...`)。バウンス・スパム報告の自動配信停止に使用。webhookを使わない場合は未設定で構いません |
 
 `CLASSIFY_MODEL` / `GENERATE_MODEL` / `EMBEDDING_MODEL` / `IMPORTANCE_THRESHOLD` / `MAX_GENERATE_PER_RUN` / `NEXT_PUBLIC_APP_URL` / `TRIAL_PERIOD_DAYS` 等はデフォルト値のままで動作します(調整用に上書き可能)。
 
@@ -95,6 +96,7 @@ pnpm db:seed
 1. [Resend](https://resend.com)でアカウントを作成し、APIキー(`re_...`)を取得 → `.env` の `RESEND_API_KEY` に設定
 2. 送信元に使うドメインをResendダッシュボードで追加し、指示されたSPF/DKIMのDNSレコードを設定(ドメイン認証が完了しないと送信できません)
 3. 認証したドメインのアドレスを `.env` の `RESEND_FROM_EMAIL` に設定(例: `digest@yourdomain.example`)
+4. (推奨)Resendダッシュボードの Webhooks で `https://your-domain/api/resend/webhook` を登録し、発行されるSigning Secret(`whsec_...`)を `.env` の `RESEND_WEBHOOK_SECRET` に設定。バウンス・スパム報告が `suppressions`(恒久除外リスト)へ自動登録され、以後の配信対象から外れます。全イベントは `email_events` に記録されます
 
 ## パイプラインの実行
 
