@@ -17,8 +17,14 @@ const CLASSIFY_CRON = "10,40 * * * *";
 const GENERATE_CRON = "20,50 * * * *";
 const DIGEST_CRON = "0 22 * * *"; // UTC 22:00 = JST 7:00
 const DISCOVER_TRENDS_CRON = "0 3 */3 * *"; // 3日おき UTC 3:00 = JST 12:00
-const WEEKLY_DIGEST_CRON = "0 22 * * 0"; // 毎週月曜 UTC日曜22:00 = JST月曜7:00
-const CHECK_VULNERABILITIES_CRON = "0 */6 * * *"; // 6時間おき(即時アラートのため頻度を上げる)
+
+const JST_OFFSET_MS = 9 * 3600 * 1000;
+
+/** Cloudflare Workers Cron Triggersはアカウントあたり5個までのため、週次まとめ・CVEチェックは
+ * 新しいcronを追加せず、既存のDIGEST_CRON(毎朝7:00 JST)実行に相乗りさせる。 */
+function isJstMonday(scheduledTime: number): boolean {
+  return new Date(scheduledTime + JST_OFFSET_MS).getUTCDay() === 1;
+}
 
 export interface WorkerBindings {
   DATABASE_URL?: string;
@@ -58,6 +64,18 @@ export default {
             .then((summary) => console.log("[scheduled] runDigest:", JSON.stringify(summary)))
             .catch((err) => console.error("[scheduled] runDigest failed", err)),
         );
+        // CVEチェックは毎朝の枠に相乗りさせる(1日1回で足りる即時性)。
+        ctx.waitUntil(
+          runCheckVulnerabilities().catch((err) => console.error("[scheduled] runCheckVulnerabilities failed", err)),
+        );
+        // 週次まとめは同じ枠のうちJST月曜の回だけ実行する。
+        if (isJstMonday(event.scheduledTime)) {
+          ctx.waitUntil(
+            runWeeklyDigest()
+              .then((summary) => console.log("[scheduled] runWeeklyDigest:", JSON.stringify(summary)))
+              .catch((err) => console.error("[scheduled] runWeeklyDigest failed", err)),
+          );
+        }
         return;
       case DISCOVER_TRENDS_CRON:
         ctx.waitUntil(runDiscoverTrends().catch((err) => console.error("[scheduled] runDiscoverTrends failed", err)));
@@ -67,18 +85,6 @@ export default {
         return;
       case GENERATE_CRON:
         ctx.waitUntil(runGenerate().catch((err) => console.error("[scheduled] runGenerate failed", err)));
-        return;
-      case WEEKLY_DIGEST_CRON:
-        ctx.waitUntil(
-          runWeeklyDigest()
-            .then((summary) => console.log("[scheduled] runWeeklyDigest:", JSON.stringify(summary)))
-            .catch((err) => console.error("[scheduled] runWeeklyDigest failed", err)),
-        );
-        return;
-      case CHECK_VULNERABILITIES_CRON:
-        ctx.waitUntil(
-          runCheckVulnerabilities().catch((err) => console.error("[scheduled] runCheckVulnerabilities failed", err)),
-        );
         return;
       case COLLECT_CRON:
       default:
