@@ -19,21 +19,36 @@ export function DigestSettingsForm({
   const [slackEnabled, setSlackEnabled] = useState(initialSlackEnabled);
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [testResult, setTestResult] = useState<"ok" | "error" | null>(null);
+
+  async function saveSettings() {
+    await fetch("/api/email-preferences", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        weeklyDigestEnabled: weeklyEnabled,
+        minImportance,
+        slackWebhookUrl: slackWebhookUrl.trim() || undefined,
+        slackEnabled,
+      }),
+    });
+  }
 
   function save() {
     setSaved(false);
     startTransition(async () => {
-      await fetch("/api/email-preferences", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          weeklyDigestEnabled: weeklyEnabled,
-          minImportance,
-          slackWebhookUrl: slackWebhookUrl.trim() || undefined,
-          slackEnabled,
-        }),
-      });
+      await saveSettings();
       setSaved(true);
+    });
+  }
+
+  function testSlack() {
+    setTestResult(null);
+    startTransition(async () => {
+      // 未保存の変更があっても、いま入力中のURLでテストできるよう先に保存してから送る。
+      await saveSettings();
+      const res = await fetch("/api/slack/test", { method: "POST" });
+      setTestResult(res.ok ? "ok" : "error");
     });
   }
 
@@ -81,6 +96,18 @@ export function DigestSettingsForm({
           />
           <span>ダイジェストをSlackにも送信する</span>
         </label>
+        <div className="card-actions">
+          <button
+            type="button"
+            className="btn btn-secondary btn-small"
+            onClick={testSlack}
+            disabled={isPending || !slackWebhookUrl.trim()}
+          >
+            {isPending ? "送信中..." : "テスト送信"}
+          </button>
+          {testResult === "ok" && <span className="topic-save-confirm">Slackに送信しました</span>}
+          {testResult === "error" && <span className="form-error">送信に失敗しました。URLを確認してください。</span>}
+        </div>
       </div>
 
       <div className="topic-save-row">
