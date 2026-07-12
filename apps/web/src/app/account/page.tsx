@@ -2,7 +2,6 @@ import {
   countReferralsByReferrer,
   getEmailPreferenceByUserId,
   getSubscriptionByUserId,
-  getUserStackSlugs,
   getUserTopicSlugs,
   listApiKeysByUser,
   listBookmarkedArticles,
@@ -17,7 +16,6 @@ import { DigestSettingsForm } from "../../components/DigestSettingsForm";
 import { EmailDigestToggle } from "../../components/EmailDigestToggle";
 import { ReferralLink } from "../../components/ReferralLink";
 import { SignOutButton } from "../../components/SignOutButton";
-import { StackSelector } from "../../components/StackSelector";
 import { TopicSelector } from "../../components/TopicSelector";
 import { auth } from "../../lib/auth";
 import { getDb } from "../../lib/db";
@@ -38,12 +36,11 @@ export default async function AccountPage() {
   }
 
   const db = getDb();
-  const [subscription, topics, selectedSlugs, stackSlugs, emailPreference, referralCount, bookmarkedArticles, apiKeys] =
+  const [subscription, topics, selectedSlugs, emailPreference, referralCount, bookmarkedArticles, apiKeys] =
     await Promise.all([
       getSubscriptionByUserId(db, session.user.id),
       listTopics(db),
       getUserTopicSlugs(db, session.user.id),
-      getUserStackSlugs(db, session.user.id),
       getEmailPreferenceByUserId(db, session.user.id),
       countReferralsByReferrer(db, session.user.id),
       listBookmarkedArticles(db, session.user.id),
@@ -115,7 +112,9 @@ export default async function AccountPage() {
 
       <section className="card">
         <h2>興味のあるトピック</h2>
-        <p className="meta">選択したトピックに合わせて新着記事のメールダイジェストを配信します。</p>
+        <p className="meta">
+          選択したトピックに合わせて新着記事のメールダイジェストを配信します。破壊的変更・非推奨化を含む記事は強調表示されます。
+        </p>
         <TopicSelector topics={topics} initialSelected={selectedSlugs} />
       </section>
 
@@ -134,14 +133,6 @@ export default async function AccountPage() {
           initialSlackWebhookUrl={emailPreference?.slackWebhookUrl ?? null}
           initialSlackEnabled={emailPreference?.slackEnabled ?? false}
         />
-      </section>
-
-      <section className="card">
-        <h2>技術スタック</h2>
-        <p className="meta">
-          自分が使っている言語・フレームワーク・ライブラリを登録すると、破壊的変更・非推奨化の記事だけ強調表示されます。
-        </p>
-        <StackSelector topics={topics} initialSelected={stackSlugs} />
       </section>
 
       <section className="card">

@@ -688,34 +688,6 @@ export async function toggleUserTopic(db: Db, userId: string, topicSlug: string)
 }
 
 // ---------------------------------------------------------------------------
-// 技術スタック(「自分に関係あるか」の個別判定用。興味トピックとは別軸)
-// ---------------------------------------------------------------------------
-
-export async function getUserStackSlugs(db: Db, userId: string): Promise<string[]> {
-  const rows = await db<{ slug: string }[]>`
-    select t.slug from user_stack us
-    join topics t on t.id = us.topic_id
-    where us.user_id = ${userId}
-    order by t.slug
-  `;
-  return rows.map((r) => r.slug);
-}
-
-/** 選択スタックを丸ごと洗い替える(削除→再挿入)。setUserTopicsと同じ方式。 */
-export async function setUserStack(db: Db, userId: string, topicSlugs: string[]): Promise<void> {
-  await db.begin(async (tx) => {
-    await tx`delete from user_stack where user_id = ${userId}`;
-    for (const slug of topicSlugs) {
-      await tx`
-        insert into user_stack (user_id, topic_id)
-        select ${userId}, t.id from topics t where t.slug = ${slug}
-        on conflict do nothing
-      `;
-    }
-  });
-}
-
-// ---------------------------------------------------------------------------
 // 収集先候補・タグ候補(半自動発見+承認フロー)
 // ---------------------------------------------------------------------------
 
@@ -1357,7 +1329,7 @@ export async function insertVulnerabilityAlertIfNew(
   return rows.length > 0 ? mapVulnerabilityAlert(rows[0]) : null;
 }
 
-export interface StackUser {
+export interface TopicFollower {
   userId: string;
   email: string;
   unsubscribeToken: string;
@@ -1365,14 +1337,14 @@ export interface StackUser {
   slackEnabled: boolean;
 }
 
-/** そのトピックをスタック登録している、配信停止リストに載っていないユーザー一覧。 */
-export async function listStackUsersForTopic(db: Db, topicId: string): Promise<StackUser[]> {
+/** そのトピックをフォローしている(興味のあるトピックに登録している)、配信停止リストに載っていないユーザー一覧。 */
+export async function listTopicFollowersForTopic(db: Db, topicId: string): Promise<TopicFollower[]> {
   const rows = await db`
     select u.id as user_id, u.email, ep.unsubscribe_token, ep.slack_webhook_url, ep.slack_enabled
-    from user_stack us
-    join "user" u on u.id = us.user_id
+    from user_topics ut
+    join "user" u on u.id = ut.user_id
     join email_preferences ep on ep.user_id = u.id
-    where us.topic_id = ${topicId}
+    where ut.topic_id = ${topicId}
       and not exists (select 1 from suppressions s where s.email = u.email)
   `;
   return rows.map((row: any) => ({

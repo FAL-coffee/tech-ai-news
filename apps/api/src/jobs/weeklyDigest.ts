@@ -1,13 +1,11 @@
 import {
   createDb,
   getLastWeeklyDeliveryAt,
-  getUserStackSlugs,
   getUserTopicSlugs,
   listArticlesForWeeklyDigest,
   listWeeklyDigestRecipients,
   recordWeeklyDelivery,
 } from "@tech-ai-news/db";
-import type { Article } from "@tech-ai-news/shared";
 import { render } from "@react-email/render";
 import { WeeklyDigestEmail } from "../emails/WeeklyDigestEmail";
 import { env } from "../env";
@@ -30,13 +28,6 @@ function formatJstDate(iso: string): string {
   );
 }
 
-/** 破壊的変更・非推奨化のうち、ユーザーが登録した技術スタックに一致するものだけを強調表示する。 */
-function isStackHighlighted(article: Article, stackSlugs: string[]): boolean {
-  if (!article.breakingChange && !article.deprecation) return false;
-  if (stackSlugs.length === 0) return false;
-  return (article.topics ?? []).some((slug) => stackSlugs.includes(slug));
-}
-
 /** 週次まとめ: 毎日は追えない層向けに、重要度が高い記事だけを抜粋して届ける(デイリー版とは独立した配信履歴を持つ)。 */
 export async function runWeeklyDigest(): Promise<WeeklyDigestSummary> {
   const db = createDb(env.DATABASE_URL);
@@ -51,9 +42,8 @@ export async function runWeeklyDigest(): Promise<WeeklyDigestSummary> {
     for (const recipient of recipients) {
       summary.recipientsChecked += 1;
       try {
-        const [topicSlugs, stackSlugs, lastDeliveryAt] = await Promise.all([
+        const [topicSlugs, lastDeliveryAt] = await Promise.all([
           getUserTopicSlugs(db, recipient.userId),
-          getUserStackSlugs(db, recipient.userId),
           getLastWeeklyDeliveryAt(db, recipient.userId),
         ]);
         const sinceDate =
@@ -78,7 +68,7 @@ export async function runWeeklyDigest(): Promise<WeeklyDigestSummary> {
           summary: a.summary,
           sourceName: a.sourceName,
           publishedDate: formatJstDate(a.originalPublishedAt ?? a.publishedAt),
-          highlighted: isStackHighlighted(a, stackSlugs),
+          highlighted: a.breakingChange || a.deprecation,
         }));
 
         const html = await render(WeeklyDigestEmail({ articles: digestArticles, siteUrl, unsubscribeUrl }));

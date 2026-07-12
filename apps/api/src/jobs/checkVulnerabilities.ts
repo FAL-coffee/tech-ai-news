@@ -2,7 +2,7 @@ import {
   claimVulnerabilityAlertDelivery,
   createDb,
   insertVulnerabilityAlertIfNew,
-  listStackUsersForTopic,
+  listTopicFollowersForTopic,
   listTopicPackageMappings,
 } from "@tech-ai-news/db";
 import { env } from "../env";
@@ -39,15 +39,15 @@ function buildAlertHtml(packageName: string, summary: string, severity: string |
       <p style="color:#6b6355; line-height:1.6;">${summary}</p>
       <p><a href="${detailsUrl}" style="color:#a63e0f; font-weight:700;">詳細を確認する(OSV.dev) →</a></p>
       <p style="color:#968f7d; font-size:12px; margin-top:24px;">
-        このメールは、あなたが「技術スタック」に登録している ${packageName} に関する脆弱性情報をOSV.dev(オープンソース脆弱性データベース)から検知したため送信しています。
+        このメールは、あなたが興味のあるトピックとして登録している ${packageName} に関する脆弱性情報をOSV.dev(オープンソース脆弱性データベース)から検知したため送信しています。
       </p>
     </div>
   `;
 }
 
 /**
- * ユーザーが登録した技術スタックに対応するパッケージについて、OSV.dev(認証不要の公開脆弱性DB)から
- * 新規の脆弱性を検知し、即時アラートを送る。ダイジェストとは独立して1日複数回実行する想定。
+ * ユーザーが興味のあるトピックとして登録しているパッケージについて、OSV.dev(認証不要の公開脆弱性DB)から
+ * 新規の脆弱性を検知し、即時アラートを送る。ダイジェストとは独立して実行する。
  */
 export async function runCheckVulnerabilities(): Promise<CheckVulnerabilitiesSummary> {
   const db = createDb(env.DATABASE_URL);
@@ -76,7 +76,7 @@ export async function runCheckVulnerabilities(): Promise<CheckVulnerabilitiesSum
           if (!alert) continue; // 既知の脆弱性(既にDBにある)なので通知しない
           summary.newAlerts += 1;
 
-          const users = await listStackUsersForTopic(db, mapping.topicId);
+          const users = await listTopicFollowersForTopic(db, mapping.topicId);
           for (const user of users) {
             const claimed = await claimVulnerabilityAlertDelivery(db, user.userId, alert.id);
             if (!claimed) continue;

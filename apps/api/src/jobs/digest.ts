@@ -1,13 +1,11 @@
 import {
   createDb,
   getLastDeliveryAt,
-  getUserStackSlugs,
   getUserTopicSlugs,
   listArticlesForDigest,
   listDigestRecipients,
   recordDelivery,
 } from "@tech-ai-news/db";
-import type { Article } from "@tech-ai-news/shared";
 import { render } from "@react-email/render";
 import { DigestEmail } from "../emails/DigestEmail";
 import { env } from "../env";
@@ -40,18 +38,11 @@ interface PlainTextArticle {
   highlighted?: boolean;
 }
 
-/** 破壊的変更・非推奨化のうち、ユーザーが登録した技術スタックに一致するものだけを強調表示する。 */
-function isStackHighlighted(article: Article, stackSlugs: string[]): boolean {
-  if (!article.breakingChange && !article.deprecation) return false;
-  if (stackSlugs.length === 0) return false;
-  return (article.topics ?? []).some((slug) => stackSlugs.includes(slug));
-}
-
 function buildPlainText(articles: PlainTextArticle[], siteUrl: string, unsubscribeUrl: string): string {
   const items = articles
     .map(
       (a) =>
-        `${a.highlighted ? "⚠ あなたのスタックに関係あり\n" : ""}■ ${a.title}\n  ${a.sourceName} · ${a.publishedDate}\n  ${a.summary}\n  ${siteUrl}/articles/${a.slug}`,
+        `${a.highlighted ? "⚠ 破壊的変更/非推奨化\n" : ""}■ ${a.title}\n  ${a.sourceName} · ${a.publishedDate}\n  ${a.summary}\n  ${siteUrl}/articles/${a.slug}`,
     )
     .join("\n\n");
   return [
@@ -78,9 +69,8 @@ export async function runDigest(): Promise<DigestSummary> {
     for (const recipient of recipients) {
       summary.recipientsChecked += 1;
       try {
-        const [topicSlugs, stackSlugs, lastDeliveryAt] = await Promise.all([
+        const [topicSlugs, lastDeliveryAt] = await Promise.all([
           getUserTopicSlugs(db, recipient.userId),
-          getUserStackSlugs(db, recipient.userId),
           getLastDeliveryAt(db, recipient.userId),
         ]);
         const sinceDate = lastDeliveryAt ?? new Date(Date.now() - DEFAULT_LOOKBACK_HOURS * 3600 * 1000).toISOString();
@@ -105,7 +95,7 @@ export async function runDigest(): Promise<DigestSummary> {
           summary: a.summary,
           sourceName: a.sourceName,
           publishedDate: formatJstDate(a.originalPublishedAt ?? a.publishedAt),
-          highlighted: isStackHighlighted(a, stackSlugs),
+          highlighted: a.breakingChange || a.deprecation,
         }));
         const html = await render(
           DigestEmail({

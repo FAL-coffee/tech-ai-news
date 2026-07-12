@@ -9,7 +9,7 @@ export interface DigestArticle {
   sourceName: string;
   /** 表示用に整形済みの公開日(例: "7/9")。 */
   publishedDate: string;
-  /** ユーザーの技術スタックに一致する破壊的変更/非推奨化。先頭に強調バッジを出す。 */
+  /** 破壊的変更/非推奨化を含む記事。先頭に強調バッジを出す。 */
   highlighted?: boolean;
 }
 
@@ -126,7 +126,7 @@ export function DigestEmail({ articles, siteUrl, unsubscribeUrl }: DigestEmailPr
 
           {articles.map((article) => (
             <div key={article.slug} style={styles.articleBlock}>
-              {article.highlighted && <p style={styles.stackBadge}>⚠ あなたのスタックに関係あり</p>}
+              {article.highlighted && <p style={styles.stackBadge}>⚠ 破壊的変更/非推奨化</p>}
               <h2 style={styles.articleTitle}>
                 <a href={`${siteUrl}/articles/${article.slug}`} style={styles.articleTitleLink}>
                   {article.title}

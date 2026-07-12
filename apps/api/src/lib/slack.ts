@@ -25,7 +25,7 @@ export async function sendSlackDigest(
   ];
 
   for (const article of articles) {
-    const prefix = article.highlighted ? ":rotating_light: *あなたのスタックに関係あり* — " : "";
+    const prefix = article.highlighted ? ":rotating_light: *破壊的変更/非推奨化* — " : "";
     blocks.push({ type: "divider" });
     blocks.push({
       type: "section",

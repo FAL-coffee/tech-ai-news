@@ -6,6 +6,7 @@ export interface WeeklyDigestArticle {
   summary: string;
   sourceName: string;
   publishedDate: string;
+  /** 破壊的変更/非推奨化を含む記事。先頭に強調バッジを出す。 */
   highlighted?: boolean;
 }
 
@@ -123,7 +124,7 @@ export function WeeklyDigestEmail({ articles, siteUrl, unsubscribeUrl }: WeeklyD
 
           {articles.map((article) => (
             <div key={article.slug} style={styles.articleBlock}>
-              {article.highlighted && <p style={styles.stackBadge}>⚠ あなたのスタックに関係あり</p>}
+              {article.highlighted && <p style={styles.stackBadge}>⚠ 破壊的変更/非推奨化</p>}
               <h2 style={styles.articleTitle}>
                 <a href={`${siteUrl}/articles/${article.slug}`} style={styles.articleTitleLink}>
                   {article.title}
