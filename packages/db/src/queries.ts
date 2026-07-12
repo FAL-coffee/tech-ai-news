@@ -1,5 +1,6 @@
 ﻿import type postgres from "postgres";
 import type {
+  ApiKeySummary,
   Article,
   CandidateStatus,
   EmailPreference,
@@ -11,6 +12,7 @@ import type {
   SubscriptionStatus,
   Topic,
   TopicCandidate,
+  VulnerabilityAlert,
 } from "@tech-ai-news/shared";
 import type { Db } from "./index";
 
@@ -45,6 +47,8 @@ function mapRawItem(row: any): RawItem {
     status: row.status,
     importance: row.importance,
     topics: row.topics,
+    breakingChange: row.breaking_change,
+    deprecation: row.deprecation,
     lastError: row.last_error,
   };
 }
@@ -67,6 +71,8 @@ function mapArticle(row: any): Article {
     originalPublishedAt: row.original_published_at,
     updatedAt: row.updated_at,
     status: row.status,
+    breakingChange: row.breaking_change,
+    deprecation: row.deprecation,
     topics: row.topic_slugs ?? undefined,
   };
 }
@@ -229,13 +235,21 @@ export async function listRawItemsByStatusWithSource(
 export async function updateRawItemClassification(
   db: Db,
   id: string,
-  result: { importance: number; topics: string[]; status: RawItemStatus },
+  result: {
+    importance: number;
+    topics: string[];
+    status: RawItemStatus;
+    breakingChange: boolean;
+    deprecation: boolean;
+  },
 ): Promise<void> {
   await db`
     update raw_items
     set importance = ${result.importance},
         topics = ${result.topics},
         status = ${result.status},
+        breaking_change = ${result.breakingChange},
+        deprecation = ${result.deprecation},
         last_error = null
     where id = ${id}
   `;
@@ -280,6 +294,8 @@ export interface NewArticleInput {
   embedding: number[];
   topicSlugs: string[];
   originalPublishedAt?: string | null;
+  breakingChange?: boolean;
+  deprecation?: boolean;
 }
 
 /** 記事挿入 + article_topics 紐付け + raw_items.status='generated' を1トランザクションで実行。 */
@@ -288,12 +304,14 @@ export async function insertArticleWithTopics(db: Db, input: NewArticleInput): P
     const [article] = await tx`
       insert into articles (
         raw_item_id, slug, title, summary, body, highlight, og_image_url,
-        original_url, source_name, importance, model, embedding, original_published_at
+        original_url, source_name, importance, model, embedding, original_published_at,
+        breaking_change, deprecation
       ) values (
         ${input.rawItemId}, ${input.slug}, ${input.title}, ${input.summary}, ${input.body},
         ${input.highlight}, ${input.ogImageUrl},
         ${input.originalUrl}, ${input.sourceName}, ${input.importance}, ${input.model},
-        ${toVectorLiteral(input.embedding)}::vector, ${input.originalPublishedAt ?? null}
+        ${toVectorLiteral(input.embedding)}::vector, ${input.originalPublishedAt ?? null},
+        ${input.breakingChange ?? false}, ${input.deprecation ?? false}
       )
       returning id
     `;
@@ -315,6 +333,8 @@ export async function insertArticleWithTopics(db: Db, input: NewArticleInput): P
 export interface ListArticlesOptions {
   topic?: string;
   search?: string;
+  dateFrom?: string;
+  dateTo?: string;
   limit?: number;
   offset?: number;
 }
@@ -324,6 +344,8 @@ export async function listPublishedArticles(db: Db, opts: ListArticlesOptions = 
   const offset = opts.offset ?? 0;
   const search = opts.search?.trim() ?? "";
   const searchPattern = `%${search}%`;
+  const dateFrom = opts.dateFrom ?? null;
+  const dateTo = opts.dateTo ?? null;
 
   const rows = opts.topic
     ? await db`
@@ -333,6 +355,8 @@ export async function listPublishedArticles(db: Db, opts: ListArticlesOptions = 
         join topics t on t.id = at2.topic_id
         where a.status = 'published'
           and (${search} = '' or a.title ilike ${searchPattern} or a.summary ilike ${searchPattern} or a.body ilike ${searchPattern})
+          and (${dateFrom}::timestamptz is null or a.published_at >= ${dateFrom})
+          and (${dateTo}::timestamptz is null or a.published_at < ${dateTo})
           and a.id in (
             select at3.article_id from article_topics at3
             join topics t2 on t2.id = at3.topic_id
@@ -349,6 +373,8 @@ export async function listPublishedArticles(db: Db, opts: ListArticlesOptions = 
         left join topics t on t.id = at2.topic_id
         where a.status = 'published'
           and (${search} = '' or a.title ilike ${searchPattern} or a.summary ilike ${searchPattern} or a.body ilike ${searchPattern})
+          and (${dateFrom}::timestamptz is null or a.published_at >= ${dateFrom})
+          and (${dateTo}::timestamptz is null or a.published_at < ${dateTo})
         group by a.id
         order by a.published_at desc
         limit ${limit} offset ${offset}
@@ -359,11 +385,15 @@ export async function listPublishedArticles(db: Db, opts: ListArticlesOptions = 
 export interface CountArticlesOptions {
   topic?: string;
   search?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export async function countPublishedArticles(db: Db, opts: CountArticlesOptions = {}): Promise<number> {
   const search = opts.search?.trim() ?? "";
   const searchPattern = `%${search}%`;
+  const dateFrom = opts.dateFrom ?? null;
+  const dateTo = opts.dateTo ?? null;
 
   const rows = opts.topic
     ? await db<{ count: number }[]>`
@@ -371,6 +401,8 @@ export async function countPublishedArticles(db: Db, opts: CountArticlesOptions 
         from articles a
         where a.status = 'published'
           and (${search} = '' or a.title ilike ${searchPattern} or a.summary ilike ${searchPattern} or a.body ilike ${searchPattern})
+          and (${dateFrom}::timestamptz is null or a.published_at >= ${dateFrom})
+          and (${dateTo}::timestamptz is null or a.published_at < ${dateTo})
           and a.id in (
             select at3.article_id from article_topics at3
             join topics t2 on t2.id = at3.topic_id
@@ -382,6 +414,8 @@ export async function countPublishedArticles(db: Db, opts: CountArticlesOptions 
         from articles a
         where a.status = 'published'
           and (${search} = '' or a.title ilike ${searchPattern} or a.summary ilike ${searchPattern} or a.body ilike ${searchPattern})
+          and (${dateFrom}::timestamptz is null or a.published_at >= ${dateFrom})
+          and (${dateTo}::timestamptz is null or a.published_at < ${dateTo})
       `;
   return rows[0]?.count ?? 0;
 }
@@ -436,11 +470,13 @@ export interface DigestArticlesOptions {
   sinceDate: string;
   topicSlugs: string[];
   limit?: number;
+  minImportance?: number;
 }
 
 /** メールダイジェスト用: 指定日時以降に公開された記事を、トピック指定があればそれに絞って返す。 */
 export async function listArticlesForDigest(db: Db, opts: DigestArticlesOptions): Promise<Article[]> {
   const limit = opts.limit ?? 10;
+  const minImportance = opts.minImportance ?? 0;
   const rows =
     opts.topicSlugs.length > 0
       ? await db`
@@ -450,6 +486,7 @@ export async function listArticlesForDigest(db: Db, opts: DigestArticlesOptions)
           join topics t on t.id = at2.topic_id
           where a.status = 'published'
             and a.published_at > ${opts.sinceDate}
+            and a.importance >= ${minImportance}
             and a.id in (
               select at3.article_id from article_topics at3
               join topics t2 on t2.id = at3.topic_id
@@ -466,8 +503,47 @@ export async function listArticlesForDigest(db: Db, opts: DigestArticlesOptions)
           left join topics t on t.id = at2.topic_id
           where a.status = 'published'
             and a.published_at > ${opts.sinceDate}
+            and a.importance >= ${minImportance}
           group by a.id
           order by a.published_at desc
+          limit ${limit}
+        `;
+  return rows.map(mapArticle);
+}
+
+/** 週次まとめ用: 期間内の記事から重要度の高い順にハイライトだけを返す(毎日は追えない層向け)。 */
+export async function listArticlesForWeeklyDigest(db: Db, opts: DigestArticlesOptions): Promise<Article[]> {
+  const limit = opts.limit ?? 8;
+  const minImportance = opts.minImportance ?? 0;
+  const rows =
+    opts.topicSlugs.length > 0
+      ? await db`
+          select a.*, array_agg(t.slug) as topic_slugs
+          from articles a
+          join article_topics at2 on at2.article_id = a.id
+          join topics t on t.id = at2.topic_id
+          where a.status = 'published'
+            and a.published_at > ${opts.sinceDate}
+            and a.importance >= ${minImportance}
+            and a.id in (
+              select at3.article_id from article_topics at3
+              join topics t2 on t2.id = at3.topic_id
+              where t2.slug = any(${opts.topicSlugs})
+            )
+          group by a.id
+          order by a.importance desc, a.published_at desc
+          limit ${limit}
+        `
+      : await db`
+          select a.*, array_agg(t.slug) as topic_slugs
+          from articles a
+          left join article_topics at2 on at2.article_id = a.id
+          left join topics t on t.id = at2.topic_id
+          where a.status = 'published'
+            and a.published_at > ${opts.sinceDate}
+            and a.importance >= ${minImportance}
+          group by a.id
+          order by a.importance desc, a.published_at desc
           limit ${limit}
         `;
   return rows.map(mapArticle);
@@ -609,6 +685,34 @@ export async function toggleUserTopic(db: Db, userId: string, topicSlug: string)
     on conflict do nothing
   `;
   return { followed: true };
+}
+
+// ---------------------------------------------------------------------------
+// 技術スタック(「自分に関係あるか」の個別判定用。興味トピックとは別軸)
+// ---------------------------------------------------------------------------
+
+export async function getUserStackSlugs(db: Db, userId: string): Promise<string[]> {
+  const rows = await db<{ slug: string }[]>`
+    select t.slug from user_stack us
+    join topics t on t.id = us.topic_id
+    where us.user_id = ${userId}
+    order by t.slug
+  `;
+  return rows.map((r) => r.slug);
+}
+
+/** 選択スタックを丸ごと洗い替える(削除→再挿入)。setUserTopicsと同じ方式。 */
+export async function setUserStack(db: Db, userId: string, topicSlugs: string[]): Promise<void> {
+  await db.begin(async (tx) => {
+    await tx`delete from user_stack where user_id = ${userId}`;
+    for (const slug of topicSlugs) {
+      await tx`
+        insert into user_stack (user_id, topic_id)
+        select ${userId}, t.id from topics t where t.slug = ${slug}
+        on conflict do nothing
+      `;
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -863,6 +967,10 @@ function mapEmailPreference(row: any): EmailPreference {
   return {
     userId: row.user_id,
     digestEnabled: row.digest_enabled,
+    weeklyDigestEnabled: row.weekly_digest_enabled,
+    minImportance: row.min_importance,
+    slackWebhookUrl: row.slack_webhook_url,
+    slackEnabled: row.slack_enabled,
     consentAt: row.consent_at,
     unsubscribeToken: row.unsubscribe_token,
     createdAt: row.created_at,
@@ -897,6 +1005,37 @@ export async function upsertEmailPreference(db: Db, input: UpsertEmailPreference
   `;
 }
 
+export interface UpdateDigestSettingsInput {
+  userId: string;
+  unsubscribeToken: string;
+  weeklyDigestEnabled?: boolean;
+  minImportance?: number;
+  slackWebhookUrl?: string | null;
+  slackEnabled?: boolean;
+}
+
+/**
+ * 週次まとめ・重要度フィルタ・Slack連携の設定を更新する。行が無ければ既定値で作成する
+ * (unsubscribeTokenが必要なため、upsertEmailPreferenceと同じ形でinsertする)。
+ * 呼び出し側が触れていないフィールドはundefinedのまま渡せば既存値が保持される。
+ */
+export async function updateDigestSettings(db: Db, input: UpdateDigestSettingsInput): Promise<void> {
+  await db`
+    insert into email_preferences (user_id, unsubscribe_token, weekly_digest_enabled, min_importance, slack_webhook_url, slack_enabled)
+    values (
+      ${input.userId}, ${input.unsubscribeToken},
+      ${input.weeklyDigestEnabled ?? false}, ${input.minImportance ?? 0},
+      ${input.slackWebhookUrl ?? null}, ${input.slackEnabled ?? false}
+    )
+    on conflict (user_id) do update set
+      weekly_digest_enabled = coalesce(${input.weeklyDigestEnabled ?? null}, email_preferences.weekly_digest_enabled),
+      min_importance = coalesce(${input.minImportance ?? null}, email_preferences.min_importance),
+      slack_webhook_url = coalesce(${input.slackWebhookUrl ?? null}, email_preferences.slack_webhook_url),
+      slack_enabled = coalesce(${input.slackEnabled ?? null}, email_preferences.slack_enabled),
+      updated_at = now()
+  `;
+}
+
 /** ログイン不要のワンクリック配信停止リンク用。トークンが見つからなければfalse。 */
 export async function setDigestEnabledByToken(db: Db, token: string, enabled: boolean): Promise<boolean> {
   const rows = await db`
@@ -911,22 +1050,44 @@ export interface DigestRecipient {
   userId: string;
   email: string;
   unsubscribeToken: string;
+  minImportance: number;
+  slackWebhookUrl: string | null;
+  slackEnabled: boolean;
+}
+
+function mapDigestRecipient(row: any): DigestRecipient {
+  return {
+    userId: row.user_id,
+    email: row.email,
+    unsubscribeToken: row.unsubscribe_token,
+    minImportance: row.min_importance,
+    slackWebhookUrl: row.slack_webhook_url,
+    slackEnabled: row.slack_enabled,
+  };
 }
 
 /** 配信停止リストに載っていない、ダイジェスト受信を有効にしているユーザー一覧。 */
 export async function listDigestRecipients(db: Db): Promise<DigestRecipient[]> {
   const rows = await db`
-    select u.id as user_id, u.email, ep.unsubscribe_token
+    select u.id as user_id, u.email, ep.unsubscribe_token, ep.min_importance, ep.slack_webhook_url, ep.slack_enabled
     from email_preferences ep
     join "user" u on u.id = ep.user_id
     where ep.digest_enabled = true
       and not exists (select 1 from suppressions s where s.email = u.email)
   `;
-  return rows.map((row: any) => ({
-    userId: row.user_id,
-    email: row.email,
-    unsubscribeToken: row.unsubscribe_token,
-  }));
+  return rows.map(mapDigestRecipient);
+}
+
+/** 週次まとめ配信を有効にしているユーザー一覧。 */
+export async function listWeeklyDigestRecipients(db: Db): Promise<DigestRecipient[]> {
+  const rows = await db`
+    select u.id as user_id, u.email, ep.unsubscribe_token, ep.min_importance, ep.slack_webhook_url, ep.slack_enabled
+    from email_preferences ep
+    join "user" u on u.id = ep.user_id
+    where ep.weekly_digest_enabled = true
+      and not exists (select 1 from suppressions s where s.email = u.email)
+  `;
+  return rows.map(mapDigestRecipient);
 }
 
 /** そのユーザーへの直近の配信日時。一度も送っていなければnull。 */
@@ -944,6 +1105,19 @@ export interface RecordDeliveryInput {
 export async function recordDelivery(db: Db, input: RecordDeliveryInput): Promise<void> {
   await db`
     insert into deliveries (user_id, article_ids, resend_message_id)
+    values (${input.userId}, ${input.articleIds}::uuid[], ${input.resendMessageId})
+  `;
+}
+
+/** そのユーザーへの直近の週次配信日時。一度も送っていなければnull。 */
+export async function getLastWeeklyDeliveryAt(db: Db, userId: string): Promise<string | null> {
+  const rows = await db`select max(sent_at) as last_sent_at from weekly_deliveries where user_id = ${userId}`;
+  return rows[0]?.last_sent_at ?? null;
+}
+
+export async function recordWeeklyDelivery(db: Db, input: RecordDeliveryInput): Promise<void> {
+  await db`
+    insert into weekly_deliveries (user_id, article_ids, resend_message_id)
     values (${input.userId}, ${input.articleIds}::uuid[], ${input.resendMessageId})
   `;
 }
@@ -1118,4 +1292,231 @@ export async function countUsersForAdmin(db: Db, search?: string): Promise<numbe
       `
     : await db<{ count: number }[]>`select count(*)::int as count from "user"`;
   return rows[0]?.count ?? 0;
+}
+
+// ---------------------------------------------------------------------------
+// CVE/脆弱性トラッキング
+// ---------------------------------------------------------------------------
+
+export interface TopicPackageMapping {
+  topicId: string;
+  topicSlug: string;
+  ecosystem: string;
+  packageName: string;
+}
+
+export async function listTopicPackageMappings(db: Db): Promise<TopicPackageMapping[]> {
+  const rows = await db`
+    select m.topic_id, t.slug as topic_slug, m.ecosystem, m.package_name
+    from topic_package_mappings m
+    join topics t on t.id = m.topic_id
+  `;
+  return rows.map((row: any) => ({
+    topicId: row.topic_id,
+    topicSlug: row.topic_slug,
+    ecosystem: row.ecosystem,
+    packageName: row.package_name,
+  }));
+}
+
+function mapVulnerabilityAlert(row: any): VulnerabilityAlert {
+  return {
+    id: row.id,
+    topicId: row.topic_id,
+    packageName: row.package_name,
+    ecosystem: row.ecosystem,
+    osvId: row.osv_id,
+    summary: row.summary,
+    severity: row.severity,
+    detailsUrl: row.details_url,
+    discoveredAt: row.discovered_at,
+  };
+}
+
+export interface InsertVulnerabilityAlertInput {
+  topicId: string;
+  packageName: string;
+  ecosystem: string;
+  osvId: string;
+  summary: string;
+  severity: string | null;
+  detailsUrl: string;
+}
+
+/** 既知(osv_idが同じ)の脆弱性は無視する。新規に記録できた場合のみ行を返す(=新規アラートとして通知対象)。 */
+export async function insertVulnerabilityAlertIfNew(
+  db: Db,
+  input: InsertVulnerabilityAlertInput,
+): Promise<VulnerabilityAlert | null> {
+  const rows = await db`
+    insert into vulnerability_alerts (topic_id, package_name, ecosystem, osv_id, summary, severity, details_url)
+    values (${input.topicId}, ${input.packageName}, ${input.ecosystem}, ${input.osvId}, ${input.summary}, ${input.severity}, ${input.detailsUrl})
+    on conflict (osv_id) do nothing
+    returning *
+  `;
+  return rows.length > 0 ? mapVulnerabilityAlert(rows[0]) : null;
+}
+
+export interface StackUser {
+  userId: string;
+  email: string;
+  unsubscribeToken: string;
+  slackWebhookUrl: string | null;
+  slackEnabled: boolean;
+}
+
+/** そのトピックをスタック登録している、配信停止リストに載っていないユーザー一覧。 */
+export async function listStackUsersForTopic(db: Db, topicId: string): Promise<StackUser[]> {
+  const rows = await db`
+    select u.id as user_id, u.email, ep.unsubscribe_token, ep.slack_webhook_url, ep.slack_enabled
+    from user_stack us
+    join "user" u on u.id = us.user_id
+    join email_preferences ep on ep.user_id = u.id
+    where us.topic_id = ${topicId}
+      and not exists (select 1 from suppressions s where s.email = u.email)
+  `;
+  return rows.map((row: any) => ({
+    userId: row.user_id,
+    email: row.email,
+    unsubscribeToken: row.unsubscribe_token,
+    slackWebhookUrl: row.slack_webhook_url,
+    slackEnabled: row.slack_enabled,
+  }));
+}
+
+/**
+ * このユーザーへこのアラートを送信する権利を主キー制約で排他的に確保する(insert成功=未送信だった)。
+ * trueが返った場合のみ実際にメール/Slack送信を行うことで、リトライ時の二重送信を防ぐ。
+ */
+export async function claimVulnerabilityAlertDelivery(
+  db: Db,
+  userId: string,
+  vulnerabilityAlertId: string,
+): Promise<boolean> {
+  const rows = await db`
+    insert into vulnerability_alert_deliveries (user_id, vulnerability_alert_id)
+    values (${userId}, ${vulnerabilityAlertId})
+    on conflict do nothing
+    returning user_id
+  `;
+  return rows.length > 0;
+}
+
+// ---------------------------------------------------------------------------
+// 社内向けRSS/APIアクセス用のAPIキー
+// ---------------------------------------------------------------------------
+
+export interface CreateApiKeyInput {
+  userId: string;
+  tokenHash: string;
+  tokenPrefix: string;
+  name: string;
+}
+
+export async function createApiKey(db: Db, input: CreateApiKeyInput): Promise<ApiKeySummary> {
+  const [row] = await db`
+    insert into api_keys (user_id, token_hash, token_prefix, name)
+    values (${input.userId}, ${input.tokenHash}, ${input.tokenPrefix}, ${input.name})
+    returning id, name, token_prefix, created_at, last_used_at
+  `;
+  return {
+    id: row.id,
+    name: row.name,
+    tokenPrefix: row.token_prefix,
+    createdAt: row.created_at,
+    lastUsedAt: row.last_used_at,
+  };
+}
+
+export async function listApiKeysByUser(db: Db, userId: string): Promise<ApiKeySummary[]> {
+  const rows = await db`
+    select id, name, token_prefix, created_at, last_used_at
+    from api_keys where user_id = ${userId}
+    order by created_at desc
+  `;
+  return rows.map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    tokenPrefix: row.token_prefix,
+    createdAt: row.created_at,
+    lastUsedAt: row.last_used_at,
+  }));
+}
+
+export async function deleteApiKey(db: Db, userId: string, id: string): Promise<void> {
+  await db`delete from api_keys where id = ${id} and user_id = ${userId}`;
+}
+
+/** BearerトークンのハッシュからユーザーIDを解決する。見つかれば最終利用日時も更新する。 */
+export async function getUserIdByApiKeyHash(db: Db, tokenHash: string): Promise<string | null> {
+  const rows = await db`
+    update api_keys set last_used_at = now()
+    where token_hash = ${tokenHash}
+    returning user_id
+  `;
+  return rows[0]?.user_id ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// 技術選定ダッシュボード(トピック単位のリリース頻度・破壊的変更頻度)
+// ---------------------------------------------------------------------------
+
+export interface TopicTrendStat {
+  slug: string;
+  nameJa: string;
+  articleCount: number;
+  breakingChangeCount: number;
+  deprecationCount: number;
+  avgImportance: number;
+  lastPublishedAt: string | null;
+}
+
+export async function getTopicTrendStats(db: Db, sinceDate: string): Promise<TopicTrendStat[]> {
+  const rows = await db`
+    select
+      t.slug,
+      t.name_ja,
+      count(a.id)::int as article_count,
+      count(*) filter (where a.breaking_change)::int as breaking_change_count,
+      count(*) filter (where a.deprecation)::int as deprecation_count,
+      coalesce(avg(a.importance), 0)::int as avg_importance,
+      max(a.published_at) as last_published_at
+    from topics t
+    join article_topics at2 on at2.topic_id = t.id
+    join articles a on a.id = at2.article_id and a.status = 'published' and a.published_at > ${sinceDate}
+    group by t.id
+    having count(a.id) > 0
+    order by article_count desc
+  `;
+  return rows.map((row: any) => ({
+    slug: row.slug,
+    nameJa: row.name_ja,
+    articleCount: row.article_count,
+    breakingChangeCount: row.breaking_change_count,
+    deprecationCount: row.deprecation_count,
+    avgImportance: row.avg_importance,
+    lastPublishedAt: row.last_published_at,
+  }));
+}
+
+export interface TopicMonthlyCount {
+  slug: string;
+  month: string;
+  count: number;
+}
+
+/** ダッシュボードの推移表示用: トピック×月ごとの記事件数。 */
+export async function getTopicMonthlyCounts(db: Db, sinceDate: string): Promise<TopicMonthlyCount[]> {
+  const rows = await db`
+    select
+      t.slug,
+      to_char(date_trunc('month', a.published_at), 'YYYY-MM') as month,
+      count(a.id)::int as count
+    from topics t
+    join article_topics at2 on at2.topic_id = t.id
+    join articles a on a.id = at2.article_id and a.status = 'published' and a.published_at > ${sinceDate}
+    group by t.id, date_trunc('month', a.published_at)
+    order by t.slug, month
+  `;
+  return rows.map((row: any) => ({ slug: row.slug, month: row.month, count: row.count }));
 }

@@ -1,20 +1,16 @@
-// tsxがtsconfig(jsx: react-jsx)を読み込めない環境(古いNode等)ではJSXがclassic変換に
-// フォールバックするため、どちらの変換でも動くようReactを明示的にインポートしておく。
 import * as React from "react";
 
-export interface DigestArticle {
+export interface WeeklyDigestArticle {
   slug: string;
   title: string;
   summary: string;
   sourceName: string;
-  /** 表示用に整形済みの公開日(例: "7/9")。 */
   publishedDate: string;
-  /** ユーザーの技術スタックに一致する破壊的変更/非推奨化。先頭に強調バッジを出す。 */
   highlighted?: boolean;
 }
 
-export interface DigestEmailProps {
-  articles: DigestArticle[];
+export interface WeeklyDigestEmailProps {
+  articles: WeeklyDigestArticle[];
   siteUrl: string;
   unsubscribeUrl: string;
 }
@@ -111,17 +107,18 @@ const styles = {
   },
 };
 
-export function DigestEmail({ articles, siteUrl, unsubscribeUrl }: DigestEmailProps) {
+/** 週次まとめ: 毎日は追えない層向けに、重要度が高い記事だけをハイライトとして届ける。 */
+export function WeeklyDigestEmail({ articles, siteUrl, unsubscribeUrl }: WeeklyDigestEmailProps) {
   return (
     <html lang="ja">
       <body style={styles.body}>
         <div style={styles.container}>
-          <p style={styles.eyebrow}>Primary Sources Only</p>
+          <p style={styles.eyebrow}>Weekly Highlights</p>
           <h1 style={styles.heading}>
             <a href={siteUrl} style={styles.articleTitleLink}>
               tech/ai news
             </a>{" "}
-            — 新着記事{articles.length}件
+            — 今週のハイライト{articles.length}件
           </h1>
 
           {articles.map((article) => (
@@ -144,13 +141,13 @@ export function DigestEmail({ articles, siteUrl, unsubscribeUrl }: DigestEmailPr
 
           <div style={styles.footer}>
             <p>
-              このメールは tech/ai news のトピック購読設定に基づいて配信されています。
+              このメールは tech/ai news の週次まとめ設定に基づいて配信されています(重要度の高い記事のみ抜粋)。
               <br />
               配信を停止する場合は
               <a href={unsubscribeUrl} style={styles.footerLink}>
                 こちら
               </a>
-              から解除できます。
+              から設定を変更できます。
             </p>
           </div>
         </div>

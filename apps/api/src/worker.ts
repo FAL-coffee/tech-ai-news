@@ -1,10 +1,12 @@
 /// <reference types="@cloudflare/workers-types" />
 import app from "./app";
+import { runCheckVulnerabilities } from "./jobs/checkVulnerabilities";
 import { runClassify } from "./jobs/classify";
 import { runCollect } from "./jobs/collect";
 import { runDigest } from "./jobs/digest";
 import { runDiscoverTrends } from "./jobs/discoverTrends";
 import { runGenerate } from "./jobs/generate";
+import { runWeeklyDigest } from "./jobs/weeklyDigest";
 
 // wrangler.tomlのcron設定と対応する値。それぞれ独立したCloudflare Workers実行(1回あたり外部
 // リクエスト50件の上限を持つ)として動かすことで、各フェーズが自分専用の予算を持つようにする。
@@ -15,6 +17,8 @@ const CLASSIFY_CRON = "10,40 * * * *";
 const GENERATE_CRON = "20,50 * * * *";
 const DIGEST_CRON = "0 22 * * *"; // UTC 22:00 = JST 7:00
 const DISCOVER_TRENDS_CRON = "0 3 */3 * *"; // 3日おき UTC 3:00 = JST 12:00
+const WEEKLY_DIGEST_CRON = "0 22 * * 0"; // 毎週月曜 UTC日曜22:00 = JST月曜7:00
+const CHECK_VULNERABILITIES_CRON = "0 */6 * * *"; // 6時間おき(即時アラートのため頻度を上げる)
 
 export interface WorkerBindings {
   DATABASE_URL?: string;
@@ -49,7 +53,11 @@ export default {
 
     switch (event.cron) {
       case DIGEST_CRON:
-        ctx.waitUntil(runDigest());
+        ctx.waitUntil(
+          runDigest()
+            .then((summary) => console.log("[scheduled] runDigest:", JSON.stringify(summary)))
+            .catch((err) => console.error("[scheduled] runDigest failed", err)),
+        );
         return;
       case DISCOVER_TRENDS_CRON:
         ctx.waitUntil(runDiscoverTrends().catch((err) => console.error("[scheduled] runDiscoverTrends failed", err)));
@@ -60,6 +68,19 @@ export default {
       case GENERATE_CRON:
         ctx.waitUntil(runGenerate().catch((err) => console.error("[scheduled] runGenerate failed", err)));
         return;
+      case WEEKLY_DIGEST_CRON:
+        ctx.waitUntil(
+          runWeeklyDigest()
+            .then((summary) => console.log("[scheduled] runWeeklyDigest:", JSON.stringify(summary)))
+            .catch((err) => console.error("[scheduled] runWeeklyDigest failed", err)),
+        );
+        return;
+      case CHECK_VULNERABILITIES_CRON:
+        ctx.waitUntil(
+          runCheckVulnerabilities().catch((err) => console.error("[scheduled] runCheckVulnerabilities failed", err)),
+        );
+        return;
+      case COLLECT_CRON:
       default:
         // COLLECT_CRONを既定の枝にしておく(wrangler.tomlのcrons配列に文字列が重複した場合の保険)。
         ctx.waitUntil(runCollect().catch((err) => console.error("[scheduled] runCollect failed", err)));

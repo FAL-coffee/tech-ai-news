@@ -21,6 +21,8 @@ export interface ClassificationResult {
   importance: number;
   worthArticle: boolean;
   topics: { slug: string; score: number }[];
+  breakingChange: boolean;
+  deprecation: boolean;
   reason: string;
   suggestedTopic: SuggestedTopic | null;
 }
@@ -64,6 +66,8 @@ export async function classifyItem(
     importance: parsed.importance,
     worthArticle: parsed.worth_article,
     topics: parsed.topics,
+    breakingChange: parsed.breaking_change,
+    deprecation: parsed.deprecation,
     reason: parsed.reason,
     suggestedTopic: parsed.suggested_topic
       ? {

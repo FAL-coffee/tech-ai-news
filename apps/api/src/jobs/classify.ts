@@ -81,6 +81,8 @@ export async function runClassify(db?: Db): Promise<ClassifySummary> {
           importance: result.importance,
           topics: result.topics.map((t) => t.slug),
           status: isSelected ? "selected" : "skipped",
+          breakingChange: result.breakingChange,
+          deprecation: result.deprecation,
         });
 
         if (isSelected) summary.selected += 1;

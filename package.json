@@ -9,6 +9,8 @@
     "classify": "pnpm --filter api classify",
     "generate": "pnpm --filter api generate",
     "digest": "pnpm --filter api digest",
+    "weekly-digest": "pnpm --filter api weekly-digest",
+    "check-vulnerabilities": "pnpm --filter api check-vulnerabilities",
     "pipeline": "pnpm --filter api pipeline",
     "dev:api": "pnpm --filter api dev",
     "dev:web": "pnpm --filter web dev",

@@ -31,6 +31,9 @@ export function buildClassificationSchema(topicSlugs: string[]) {
         }),
       )
       .max(5),
+    // 技術スタック個別化機能向け: この情報が既存ユーザーの破壊的変更・非推奨化として影響するか。
+    breaking_change: z.boolean(),
+    deprecation: z.boolean(),
     reason: z.string(),
     // 既存トピックのどれも合わない場合にのみ、新規トピックの候補を提案する(合わなければnull)。
     suggested_topic: TopicSuggestionSchema.nullable(),

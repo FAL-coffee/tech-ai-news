@@ -58,6 +58,8 @@ export async function runGenerate(db?: Db): Promise<GenerateSummary> {
           embedding,
           topicSlugs: item.topics ?? [],
           originalPublishedAt: item.publishedAt,
+          breakingChange: item.breakingChange,
+          deprecation: item.deprecation,
         });
 
         summary.generated += 1;

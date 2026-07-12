@@ -9,6 +9,8 @@
     "classify": "tsx scripts/classify.ts",
     "generate": "tsx scripts/generate.ts",
     "digest": "tsx scripts/digest.ts",
+    "weekly-digest": "tsx scripts/weeklyDigest.ts",
+    "check-vulnerabilities": "tsx scripts/checkVulnerabilities.ts",
     "discover-trends": "tsx scripts/discoverTrends.ts",
     "pipeline": "tsx scripts/pipeline.ts",
     "cf:dev": "wrangler dev",

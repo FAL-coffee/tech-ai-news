@@ -2,7 +2,9 @@ import {
   countReferralsByReferrer,
   getEmailPreferenceByUserId,
   getSubscriptionByUserId,
+  getUserStackSlugs,
   getUserTopicSlugs,
+  listApiKeysByUser,
   listBookmarkedArticles,
   listTopics,
 } from "@tech-ai-news/db";
@@ -10,9 +12,12 @@ import { isActiveSubscription } from "@tech-ai-news/shared";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ApiKeyManager } from "../../components/ApiKeyManager";
+import { DigestSettingsForm } from "../../components/DigestSettingsForm";
 import { EmailDigestToggle } from "../../components/EmailDigestToggle";
 import { ReferralLink } from "../../components/ReferralLink";
 import { SignOutButton } from "../../components/SignOutButton";
+import { StackSelector } from "../../components/StackSelector";
 import { TopicSelector } from "../../components/TopicSelector";
 import { auth } from "../../lib/auth";
 import { getDb } from "../../lib/db";
@@ -33,14 +38,16 @@ export default async function AccountPage() {
   }
 
   const db = getDb();
-  const [subscription, topics, selectedSlugs, emailPreference, referralCount, bookmarkedArticles] =
+  const [subscription, topics, selectedSlugs, stackSlugs, emailPreference, referralCount, bookmarkedArticles, apiKeys] =
     await Promise.all([
       getSubscriptionByUserId(db, session.user.id),
       listTopics(db),
       getUserTopicSlugs(db, session.user.id),
+      getUserStackSlugs(db, session.user.id),
       getEmailPreferenceByUserId(db, session.user.id),
       countReferralsByReferrer(db, session.user.id),
       listBookmarkedArticles(db, session.user.id),
+      listApiKeysByUser(db, session.user.id),
     ]);
 
   const active = isActiveSubscription(subscription?.status);
@@ -116,6 +123,30 @@ export default async function AccountPage() {
         <h2>メール配信</h2>
         <p className="meta">興味のあるトピックの新着記事をメールでお届けします。いつでも配信停止できます。</p>
         <EmailDigestToggle initialEnabled={emailPreference?.digestEnabled ?? false} />
+      </section>
+
+      <section className="card">
+        <h2>配信設定</h2>
+        <p className="meta">週次まとめ・重要度フィルタ・Slack通知をまとめて設定できます。</p>
+        <DigestSettingsForm
+          initialWeeklyEnabled={emailPreference?.weeklyDigestEnabled ?? false}
+          initialMinImportance={emailPreference?.minImportance ?? 0}
+          initialSlackWebhookUrl={emailPreference?.slackWebhookUrl ?? null}
+          initialSlackEnabled={emailPreference?.slackEnabled ?? false}
+        />
+      </section>
+
+      <section className="card">
+        <h2>技術スタック</h2>
+        <p className="meta">
+          自分が使っている言語・フレームワーク・ライブラリを登録すると、破壊的変更・非推奨化の記事だけ強調表示されます。
+        </p>
+        <StackSelector topics={topics} initialSelected={stackSlugs} />
+      </section>
+
+      <section className="card">
+        <h2>APIアクセス</h2>
+        <ApiKeyManager initialKeys={apiKeys} />
       </section>
 
       <section className="card">

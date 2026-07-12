@@ -53,6 +53,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <Link href="/topics" className="nav-link">
                 トピック
               </Link>
+              <Link href="/archive" className="nav-link">
+                アーカイブ
+              </Link>
+              {hasSession && (
+                <Link href="/dashboard" className="nav-link">
+                  ダッシュボード
+                </Link>
+              )}
               <Link href="/pricing" className="nav-link">
                 料金
               </Link>

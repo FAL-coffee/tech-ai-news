@@ -27,6 +27,8 @@ export interface RawItem {
   status: RawItemStatus;
   importance: number | null;
   topics: string[] | null;
+  breakingChange: boolean;
+  deprecation: boolean;
   lastError: string | null;
 }
 
@@ -54,6 +56,8 @@ export interface Article {
   originalPublishedAt: string | null;
   updatedAt: string;
   status: "draft" | "published" | "retracted";
+  breakingChange: boolean;
+  deprecation: boolean;
   topics?: string[];
 }
 
@@ -81,10 +85,34 @@ export interface Subscription {
 export interface EmailPreference {
   userId: string;
   digestEnabled: boolean;
+  weeklyDigestEnabled: boolean;
+  minImportance: number;
+  slackWebhookUrl: string | null;
+  slackEnabled: boolean;
   consentAt: string | null;
   unsubscribeToken: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface VulnerabilityAlert {
+  id: string;
+  topicId: string | null;
+  packageName: string;
+  ecosystem: string;
+  osvId: string;
+  summary: string;
+  severity: string | null;
+  detailsUrl: string;
+  discoveredAt: string;
+}
+
+export interface ApiKeySummary {
+  id: string;
+  name: string;
+  tokenPrefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
 }
 
 export type CandidateStatus = "pending" | "approved" | "rejected";

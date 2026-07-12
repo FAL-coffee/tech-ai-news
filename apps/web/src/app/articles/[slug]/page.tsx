@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: article.summary,
       publishedTime: article.originalPublishedAt ?? article.publishedAt,
       modifiedTime: article.updatedAt,
-      images: article.ogImageUrl ? [article.ogImageUrl] : undefined,
+      // 画像は同ディレクトリのopengraph-image.tsx(tech/ai newsブランドの独自生成画像)が使われる。
     },
   };
 }
