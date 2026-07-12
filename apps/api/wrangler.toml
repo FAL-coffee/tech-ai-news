@@ -12,7 +12,7 @@ compatibility_date = "2026-07-06"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-NEXT_PUBLIC_APP_URL = "https://fal-tech-ai-news.vercel.app"
+NEXT_PUBLIC_APP_URL = "https://tech-news.fal.works"
 IMPORTANCE_THRESHOLD = "60"
 CLASSIFY_BATCH_SIZE = "30"
 MAX_GENERATE_PER_RUN = "10"
