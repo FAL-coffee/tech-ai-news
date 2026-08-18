@@ -88,7 +88,7 @@ export default async function ArticlePage({ params }: PageProps) {
           <span aria-hidden="true">·</span>
           <span>重要度 {article.importance}</span>
           <span aria-hidden="true">·</span>
-          <span>掲載: {formatJstDateTime(article.publishedAt)}</span>
+          <span>掲載 {formatJstDateTime(article.publishedAt)}</span>
           {wasUpdated && (
             <>
               <span aria-hidden="true">·</span>

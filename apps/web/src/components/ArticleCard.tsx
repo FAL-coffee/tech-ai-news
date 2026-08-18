@@ -23,7 +23,7 @@ export function ArticleCard({ article }: { article: Article }) {
         <span aria-hidden="true">·</span>
         <span>重要度 {article.importance}</span>
         <span aria-hidden="true">·</span>
-        <span>{formatJstDateTime(article.publishedAt)}</span>
+        <span>掲載 {formatJstDateTime(article.publishedAt)}</span>
       </p>
       {article.highlight && (
         <div className="highlight-callout">
