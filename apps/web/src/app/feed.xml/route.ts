@@ -27,7 +27,7 @@ export async function GET() {
           <title>${escapeXml(article.title)}</title>
           <link>${url}</link>
           <guid isPermaLink="true">${url}</guid>
-          <pubDate>${new Date(article.originalPublishedAt ?? article.publishedAt).toUTCString()}</pubDate>
+          <pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate>
           <description>${escapeXml(article.summary)}</description>
           <source url="${escapeXml(article.originalUrl)}">${escapeXml(article.sourceName)}</source>
         </item>`;

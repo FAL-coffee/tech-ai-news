@@ -409,6 +409,10 @@ h1, h2, h3 {
   flex-wrap: wrap;
 }
 
+.original-meta {
+  margin-top: -0.4rem;
+}
+
 .topics {
   display: flex;
   flex-wrap: wrap;
@@ -437,43 +441,6 @@ h1, h2, h3 {
 .topic-badge:hover {
   color: var(--accent);
   border-bottom-color: var(--accent);
-}
-
-.topics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1rem;
-}
-
-.topic-count-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 1.25rem 1.4rem;
-  text-decoration: none;
-  color: var(--text);
-  display: block;
-  transition: border-color 0.15s ease;
-}
-
-.topic-count-card:hover {
-  border-color: var(--border-strong);
-}
-
-.topic-count-value {
-  font-family: var(--font-serif);
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--accent);
-}
-
-.topic-count-label {
-  font-family: var(--font-sans);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-top: 0.2rem;
 }
 
 .topics-link-row {
@@ -1821,19 +1788,6 @@ form {
     font-size: 1.35rem;
   }
 
-  .topics-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.7rem;
-  }
-
-  .topic-count-card {
-    padding: 1rem 1.1rem;
-  }
-
-  .topic-count-value {
-    font-size: 1.6rem;
-  }
-
   .admin-stat-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.7rem;
@@ -1851,6 +1805,46 @@ form {
 }
 
 /* --- 記事アーカイブ --- */
+.topic-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 1.5rem;
+}
+
+.topic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.topic-chip:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.topic-chip-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.topic-chip-count {
+  font-size: 0.76rem;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
 .archive-filter-form {
   display: flex;
   flex-wrap: wrap;

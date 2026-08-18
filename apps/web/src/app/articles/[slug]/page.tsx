@@ -18,6 +18,7 @@ import { ArticleReactions } from "../../../components/ArticleReactions";
 import { ArticleTopicTags } from "../../../components/ArticleTopicTags";
 import { ShareLinks } from "../../../components/ShareLinks";
 import { auth } from "../../../lib/auth";
+import { formatJstDateTime } from "../../../lib/date";
 import { getDb } from "../../../lib/db";
 import { appUrl } from "../../../lib/site";
 
@@ -41,7 +42,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       type: "article",
       title: article.title,
       description: article.summary,
-      publishedTime: article.originalPublishedAt ?? article.publishedAt,
+      publishedTime: article.publishedAt,
       modifiedTime: article.updatedAt,
       // 画像は同ディレクトリのopengraph-image.tsx(tech/ai newsブランドの独自生成画像)が使われる。
     },
@@ -87,27 +88,17 @@ export default async function ArticlePage({ params }: PageProps) {
           <span aria-hidden="true">·</span>
           <span>重要度 {article.importance}</span>
           <span aria-hidden="true">·</span>
-          <span>
-            {article.originalPublishedAt ? "原文公開: " : ""}
-            {new Date(article.originalPublishedAt ?? article.publishedAt).toLocaleDateString("ja-JP")}
-          </span>
+          <span>掲載: {formatJstDateTime(article.publishedAt)}</span>
           {wasUpdated && (
             <>
               <span aria-hidden="true">·</span>
-              <span>
-                更新:{" "}
-                {new Date(article.updatedAt).toLocaleString("ja-JP", {
-                  timeZone: "Asia/Tokyo",
-                  year: "numeric",
-                  month: "numeric",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
+              <span>更新: {formatJstDateTime(article.updatedAt)}</span>
             </>
           )}
         </p>
+        {article.originalPublishedAt && (
+          <p className="meta original-meta">原文公開: {formatJstDateTime(article.originalPublishedAt)}</p>
+        )}
 
         {article.highlight && (
           <div className="highlight-callout">

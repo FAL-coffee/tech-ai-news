@@ -94,7 +94,7 @@ export async function runDigest(): Promise<DigestSummary> {
           title: a.title,
           summary: a.summary,
           sourceName: a.sourceName,
-          publishedDate: formatJstDate(a.originalPublishedAt ?? a.publishedAt),
+          publishedDate: formatJstDate(a.publishedAt),
           highlighted: a.breakingChange || a.deprecation,
         }));
         const html = await render(

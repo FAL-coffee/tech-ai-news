@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { countPublishedArticles, listPublishedArticles, listTopics } from "@tech-ai-news/db";
+import { countPublishedArticles, listPublishedArticles, listTopicsWithArticleCount } from "@tech-ai-news/db";
 import { ArticleCard } from "../../components/ArticleCard";
 import { getDb } from "../../lib/db";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "記事アーカイブ",
-  description: "過去に公開したテック/AIニュース記事を、期間・トピック・キーワードで絞り込んで検索できます。",
+  description: "公開したテック/AIニュース記事を、トピック別に新着順で読めます。期間・キーワードでも絞り込めます。",
 };
 
 const PAGE_SIZE = 20;
@@ -27,10 +27,11 @@ export default async function ArchivePage({ searchParams }: PageProps) {
   const dateTo = to ? new Date(new Date(to).getTime() + 24 * 3600 * 1000).toISOString() : undefined;
 
   const db = getDb();
-  const [articles, total, topics] = await Promise.all([
+  const [articles, total, topics, allCount] = await Promise.all([
     listPublishedArticles(db, { topic, search, dateFrom, dateTo, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
     countPublishedArticles(db, { topic, search, dateFrom, dateTo }),
-    listTopics(db),
+    listTopicsWithArticleCount(db),
+    countPublishedArticles(db, {}),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -40,24 +41,46 @@ export default async function ArchivePage({ searchParams }: PageProps) {
   if (from) baseParams.from = from;
   if (to) baseParams.to = to;
 
+  // トピックチップは現在のキーワード・期間指定を保ったまま、トピックだけを切り替える。
+  function chipHref(nextTopic?: string): string {
+    const params = new URLSearchParams();
+    if (search) params.set("q", search);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (nextTopic) params.set("topic", nextTopic);
+    const qs = params.toString();
+    return qs ? `/archive?${qs}` : "/archive";
+  }
+
   return (
     <main className="page">
       <div className="hero">
         <span className="hero-eyebrow">Archive</span>
         <h1 className="hero-title">記事アーカイブ</h1>
-        <p className="hero-subtitle">「あのアップデート何だっけ」を、期間・トピック・キーワードで後から探せます。</p>
+        <p className="hero-subtitle">トピック別に新着順で読めます。「あのアップデート何だっけ」はキーワード・期間からも探せます。</p>
+      </div>
+
+      <div className="topic-chip-row">
+        <Link href={chipHref(undefined)} className={`topic-chip${!topic ? " topic-chip-active" : ""}`}>
+          すべて<span className="topic-chip-count">{allCount}</span>
+        </Link>
+        {topics
+          .filter((t) => t.articleCount > 0)
+          .map((t) => (
+            <Link
+              key={t.slug}
+              href={chipHref(t.slug)}
+              className={`topic-chip${topic === t.slug ? " topic-chip-active" : ""}`}
+            >
+              {t.nameJa}
+              <span className="topic-chip-count">{t.articleCount}</span>
+            </Link>
+          ))}
       </div>
 
       <form className="archive-filter-form" action="/archive" method="get">
+        {topic && <input type="hidden" name="topic" value={topic} />}
         <input type="search" name="q" defaultValue={search} placeholder="キーワードで検索" />
-        <select name="topic" defaultValue={topic ?? ""}>
-          <option value="">すべてのトピック</option>
-          {topics.map((t) => (
-            <option key={t.slug} value={t.slug}>
-              {t.nameJa}
-            </option>
-          ))}
-        </select>
         <label className="archive-date-label">
           From
           <input type="date" name="from" defaultValue={from ?? ""} />

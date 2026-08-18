@@ -68,7 +68,7 @@ export default async function HomePage({ searchParams }: PageProps) {
         </button>
       </form>
       <p className="topics-link-row">
-        <Link href="/topics">トピック一覧から探す →</Link>
+        <Link href="/archive">トピック別・新着順で探す →</Link>
       </p>
 
       {showRecommended && recommended.length > 0 && (

@@ -67,7 +67,7 @@ export async function runWeeklyDigest(): Promise<WeeklyDigestSummary> {
           title: a.title,
           summary: a.summary,
           sourceName: a.sourceName,
-          publishedDate: formatJstDate(a.originalPublishedAt ?? a.publishedAt),
+          publishedDate: formatJstDate(a.publishedAt),
           highlighted: a.breakingChange || a.deprecation,
         }));
 
