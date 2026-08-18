@@ -3,7 +3,9 @@ import { Hono } from "hono";
 import { env } from "./env";
 import { runClassify } from "./jobs/classify";
 import { runCollect } from "./jobs/collect";
+import { runDigest } from "./jobs/digest";
 import { runGenerate } from "./jobs/generate";
+import { runWeeklyDigest } from "./jobs/weeklyDigest";
 
 // Node固有APIには依存しない(将来 Cloudflare Workers へ export default するだけで移行できるように保つ)。
 const app = new Hono();
@@ -22,6 +24,16 @@ app.post("/jobs/classify", async (c) => {
 
 app.post("/jobs/generate", async (c) => {
   const summary = await runGenerate();
+  return c.json(summary);
+});
+
+app.post("/jobs/digest", async (c) => {
+  const summary = await runDigest();
+  return c.json(summary);
+});
+
+app.post("/jobs/weekly-digest", async (c) => {
+  const summary = await runWeeklyDigest();
   return c.json(summary);
 });
 
