@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { countPublishedArticles, getUserTopicSlugs, listPublishedArticles, listRecommendedArticles } from "@tech-ai-news/db";
+import {
+  countPublishedArticles,
+  getSubscriptionByUserId,
+  getUserTopicSlugs,
+  listPublishedArticles,
+  listRecommendedArticles,
+} from "@tech-ai-news/db";
+import { isActiveSubscription } from "@tech-ai-news/shared";
 import { headers } from "next/headers";
 import { ArticleCard } from "../components/ArticleCard";
 import { auth } from "../lib/auth";
@@ -46,6 +53,10 @@ export default async function HomePage({ searchParams }: PageProps) {
       })
     : [];
 
+  const subscription = showRecommended && session ? await getSubscriptionByUserId(db, session.user.id) : null;
+  const showTrialCta = showRecommended && !isActiveSubscription(subscription?.status);
+  const trialCtaHref = session ? "/pricing" : "/signup?next=/pricing";
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const baseParams: Record<string, string> = {};
@@ -56,8 +67,34 @@ export default async function HomePage({ searchParams }: PageProps) {
     <main className="page">
       <div className="hero">
         <span className="hero-eyebrow">Primary Sources Only</span>
-        <h1 className="hero-title">Tech / AI ニュース</h1>
-        <p className="hero-subtitle">まとめでも翻訳でもない。公式発表を、AIが日本語でわかりやすく。</p>
+        <h1 className="hero-title">毎朝、公式発表だけを日本語で。</h1>
+        <p className="hero-subtitle">
+          まとめでも翻訳でもない一次情報を、興味のあるトピックだけAIが記事化。新着は毎朝メールで届きます。
+        </p>
+
+        {showTrialCta && (
+          <div className="hero-cta-row">
+            <Link href={trialCtaHref} className="btn btn-accent">
+              14日間無料で試す
+            </Link>
+            <span className="hero-cta-note">月980円・カード登録の上14日間無料、いつでも解約可能</span>
+          </div>
+        )}
+
+        <ul className="hero-points">
+          <li className="hero-point">
+            <span className="hero-point-label">一次情報のみ</span>
+            <span className="hero-point-desc">公式ブログ・リリースノートだけを収集、二次情報は扱いません</span>
+          </li>
+          <li className="hero-point">
+            <span className="hero-point-label">毎朝ダイジェスト</span>
+            <span className="hero-point-desc">興味トピックの新着記事をメールでまとめて</span>
+          </li>
+          <li className="hero-point">
+            <span className="hero-point-label">原文リンク明記</span>
+            <span className="hero-point-desc">出典と原文へのリンクを必ず併記</span>
+          </li>
+        </ul>
       </div>
 
       <form className="search-bar" action="/" method="get">
