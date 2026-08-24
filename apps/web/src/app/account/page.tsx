@@ -137,7 +137,7 @@ export default async function AccountPage() {
 
       <section className="card">
         <h2>APIアクセス</h2>
-        <ApiKeyManager initialKeys={apiKeys} />
+        <ApiKeyManager initialKeys={apiKeys} siteUrl={appUrl()} />
       </section>
 
       <section className="card">

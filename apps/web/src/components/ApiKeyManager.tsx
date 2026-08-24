@@ -3,7 +3,7 @@
 import type { ApiKeySummary } from "@tech-ai-news/shared";
 import { useState, useTransition } from "react";
 
-export function ApiKeyManager({ initialKeys }: { initialKeys: ApiKeySummary[] }) {
+export function ApiKeyManager({ initialKeys, siteUrl }: { initialKeys: ApiKeySummary[]; siteUrl: string }) {
   const [keys, setKeys] = useState<ApiKeySummary[]>(initialKeys);
   const [newToken, setNewToken] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -59,8 +59,8 @@ export function ApiKeyManager({ initialKeys }: { initialKeys: ApiKeySummary[] })
         </button>
       </div>
       <p className="meta">
-        利用例: <code>GET {"{siteUrl}"}/api/v1/articles</code>(<code>Authorization: Bearer &lt;APIキー&gt;</code>)。 サイト全体のRSSは{" "}
-        <code>/feed.xml</code> で認証不要で購読できます。
+        利用例: <code>GET {siteUrl}/api/v1/articles</code>(<code>Authorization: Bearer &lt;APIキー&gt;</code>)。 サイト全体のRSSは{" "}
+        <code>{siteUrl}/feed.xml</code> で認証不要で購読できます。
       </p>
     </div>
   );
