@@ -53,6 +53,15 @@ function mapRawItem(row: any): RawItem {
   };
 }
 
+// articlesの一覧系クエリで使う列リスト。`select a.*`はembedding(vector(1536)、テキスト形式で
+// 1行あたり十数KB)とbody(本文全文)まで転送してしまい、どちらもカード表示では使わないため
+// Neonのデータ転送量(egress)を無駄に消費する。詳細画面用にはbodyを含むARTICLE_DETAIL_COLUMNSを使う。
+const ARTICLE_LIST_COLUMNS =
+  "a.id, a.raw_item_id, a.slug, a.title, a.summary, '' as body, a.highlight, a.og_image_url, " +
+  "a.original_url, a.source_name, a.importance, a.model, a.published_at, a.original_published_at, " +
+  "a.updated_at, a.status, a.breaking_change, a.deprecation";
+const ARTICLE_DETAIL_COLUMNS = ARTICLE_LIST_COLUMNS.replace("'' as body", "a.body");
+
 function mapArticle(row: any): Article {
   return {
     id: row.id,
@@ -349,7 +358,7 @@ export async function listPublishedArticles(db: Db, opts: ListArticlesOptions = 
 
   const rows = opts.topic
     ? await db`
-        select a.*, array_agg(t.slug) as topic_slugs
+        select ${db.unsafe(ARTICLE_LIST_COLUMNS)}, array_agg(t.slug) as topic_slugs
         from articles a
         join article_topics at2 on at2.article_id = a.id
         join topics t on t.id = at2.topic_id
@@ -367,7 +376,7 @@ export async function listPublishedArticles(db: Db, opts: ListArticlesOptions = 
         limit ${limit} offset ${offset}
       `
     : await db`
-        select a.*, array_agg(t.slug) as topic_slugs
+        select ${db.unsafe(ARTICLE_LIST_COLUMNS)}, array_agg(t.slug) as topic_slugs
         from articles a
         left join article_topics at2 on at2.article_id = a.id
         left join topics t on t.id = at2.topic_id
@@ -437,7 +446,7 @@ export async function listRecommendedArticles(db: Db, opts: RecommendedArticlesO
   const rows =
     opts.topicSlugs.length > 0
       ? await db`
-          select a.*, array_agg(t.slug) as topic_slugs
+          select ${db.unsafe(ARTICLE_LIST_COLUMNS)}, array_agg(t.slug) as topic_slugs
           from articles a
           join article_topics at2 on at2.article_id = a.id
           join topics t on t.id = at2.topic_id
@@ -453,7 +462,7 @@ export async function listRecommendedArticles(db: Db, opts: RecommendedArticlesO
           limit ${limit}
         `
       : await db`
-          select a.*, array_agg(t.slug) as topic_slugs
+          select ${db.unsafe(ARTICLE_LIST_COLUMNS)}, array_agg(t.slug) as topic_slugs
           from articles a
           left join article_topics at2 on at2.article_id = a.id
           left join topics t on t.id = at2.topic_id
@@ -480,7 +489,7 @@ export async function listArticlesForDigest(db: Db, opts: DigestArticlesOptions)
   const rows =
     opts.topicSlugs.length > 0
       ? await db`
-          select a.*, array_agg(t.slug) as topic_slugs
+          select ${db.unsafe(ARTICLE_LIST_COLUMNS)}, array_agg(t.slug) as topic_slugs
           from articles a
           join article_topics at2 on at2.article_id = a.id
           join topics t on t.id = at2.topic_id
@@ -497,7 +506,7 @@ export async function listArticlesForDigest(db: Db, opts: DigestArticlesOptions)
           limit ${limit}
         `
       : await db`
-          select a.*, array_agg(t.slug) as topic_slugs
+          select ${db.unsafe(ARTICLE_LIST_COLUMNS)}, array_agg(t.slug) as topic_slugs
           from articles a
           left join article_topics at2 on at2.article_id = a.id
           left join topics t on t.id = at2.topic_id
@@ -518,7 +527,7 @@ export async function listArticlesForWeeklyDigest(db: Db, opts: DigestArticlesOp
   const rows =
     opts.topicSlugs.length > 0
       ? await db`
-          select a.*, array_agg(t.slug) as topic_slugs
+          select ${db.unsafe(ARTICLE_LIST_COLUMNS)}, array_agg(t.slug) as topic_slugs
           from articles a
           join article_topics at2 on at2.article_id = a.id
           join topics t on t.id = at2.topic_id
@@ -535,7 +544,7 @@ export async function listArticlesForWeeklyDigest(db: Db, opts: DigestArticlesOp
           limit ${limit}
         `
       : await db`
-          select a.*, array_agg(t.slug) as topic_slugs
+          select ${db.unsafe(ARTICLE_LIST_COLUMNS)}, array_agg(t.slug) as topic_slugs
           from articles a
           left join article_topics at2 on at2.article_id = a.id
           left join topics t on t.id = at2.topic_id
@@ -551,7 +560,7 @@ export async function listArticlesForWeeklyDigest(db: Db, opts: DigestArticlesOp
 
 export async function getArticleBySlug(db: Db, slug: string): Promise<Article | null> {
   const rows = await db`
-    select a.*, array_agg(t.slug) as topic_slugs
+    select ${db.unsafe(ARTICLE_DETAIL_COLUMNS)}, array_agg(t.slug) as topic_slugs
     from articles a
     left join article_topics at2 on at2.article_id = a.id
     left join topics t on t.id = at2.topic_id
@@ -1190,7 +1199,7 @@ export async function isBookmarkedByUser(db: Db, userId: string, articleId: stri
 
 export async function listBookmarkedArticles(db: Db, userId: string): Promise<Article[]> {
   const rows = await db`
-    select a.*, array_agg(t.slug) as topic_slugs
+    select ${db.unsafe(ARTICLE_LIST_COLUMNS)}, array_agg(t.slug) as topic_slugs
     from article_bookmarks b
     join articles a on a.id = b.article_id
     left join article_topics at2 on at2.article_id = a.id
