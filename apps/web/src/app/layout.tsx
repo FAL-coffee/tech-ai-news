@@ -1,18 +1,26 @@
 import { headers } from "next/headers";
 import type { Metadata } from "next";
-import { Inter, Source_Serif_4 } from "next/font/google";
+import { M_PLUS_1, M_PLUS_1_Code } from "next/font/google";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { isAdminEmail } from "../lib/admin";
 import { auth } from "../lib/auth";
 import { appUrl } from "../lib/site";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-const sourceSerif = Source_Serif_4({
+const THEME_INIT_SCRIPT = `try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}`;
+
+const mplus1 = M_PLUS_1({
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-source-serif",
+  weight: ["500", "700", "900"],
+  variable: "--font-mplus1",
+  display: "swap",
+});
+const mplus1Code = M_PLUS_1_Code({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-mplus1-code",
   display: "swap",
 });
 
@@ -42,12 +50,22 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   }
 
   return (
-    <html lang="ja" className={`${inter.variable} ${sourceSerif.variable}`}>
+    <html lang="ja" className={`${mplus1.variable} ${mplus1Code.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body>
+        <div className="signal-ticker" aria-hidden="true">
+          SOURCE FEED — 公式ブログ・リリースノート・公式アカウントのみを収集、二次情報は扱いません
+        </div>
         <header className="site-header">
           <div className="site-header-inner">
             <Link href="/" className="brand">
               tech<span className="brand-accent">/</span>ai<span className="brand-suffix"> news</span>
+              <span className="brand-live">
+                <span className="brand-live-dot" />
+                更新中
+              </span>
             </Link>
             <nav className="main-nav">
               <Link href="/archive" className="nav-link">
@@ -80,6 +98,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                   </Link>
                 </>
               )}
+              <ThemeToggle />
             </nav>
           </div>
         </header>

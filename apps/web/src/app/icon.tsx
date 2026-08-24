@@ -13,21 +13,20 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#a63e0f",
-          borderRadius: 6,
+          background: "#0e1210",
+          border: "1px solid #ff8a3d",
         }}
       >
         <span
           style={{
-            color: "#fffdf9",
-            fontSize: 22,
+            color: "#ff8a3d",
+            fontSize: 20,
             fontWeight: 700,
-            fontFamily: "Georgia, serif",
+            fontFamily: "Helvetica, Arial, sans-serif",
             lineHeight: 1,
-            transform: "translateY(-1px)",
           }}
         >
-          t
+          t/
         </span>
       </div>
     ),

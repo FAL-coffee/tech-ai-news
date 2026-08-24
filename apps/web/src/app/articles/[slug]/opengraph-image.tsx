@@ -31,8 +31,8 @@ export default async function ArticleOpengraphImage({ params }: Props) {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "80px 90px",
-          background: "#f7f5f0",
-          fontFamily: "Georgia, serif",
+          background: "#0e1210",
+          fontFamily: "Helvetica, Arial, sans-serif",
         }}
       >
         <div
@@ -40,16 +40,14 @@ export default async function ArticleOpengraphImage({ params }: Props) {
             display: "flex",
             alignItems: "center",
             gap: 10,
-            fontFamily: "Helvetica, Arial, sans-serif",
             fontSize: 20,
             fontWeight: 700,
             letterSpacing: 4,
             textTransform: "uppercase",
-            color: "#a63e0f",
+            color: "#5ecbd0",
           }}
         >
-          <div style={{ width: 36, height: 2, background: "#a63e0f" }} />
-          PRIMARY SOURCES ONLY
+          [ PRIMARY SOURCES ONLY ]
         </div>
 
         <div
@@ -57,7 +55,7 @@ export default async function ArticleOpengraphImage({ params }: Props) {
             display: "flex",
             fontSize: title.length > 40 ? 52 : 64,
             fontWeight: 700,
-            color: "#1c1a17",
+            color: "#eef1ea",
             lineHeight: 1.3,
             letterSpacing: -1,
           }}
@@ -69,16 +67,15 @@ export default async function ArticleOpengraphImage({ params }: Props) {
           <div
             style={{
               display: "flex",
-              fontFamily: "Helvetica, Arial, sans-serif",
               fontSize: 24,
-              color: "#6b6355",
+              color: "#93a08f",
             }}
           >
             {sourceName ? `原文: ${sourceName}` : ""}
           </div>
-          <div style={{ display: "flex", fontSize: 40, fontWeight: 700, color: "#1c1a17" }}>
-            tech<span style={{ color: "#a63e0f" }}>/</span>ai
-            <span style={{ color: "#968f7d", fontWeight: 500 }}>&nbsp;news</span>
+          <div style={{ display: "flex", fontSize: 40, fontWeight: 700, color: "#eef1ea" }}>
+            tech<span style={{ color: "#ff8a3d" }}>/</span>ai
+            <span style={{ color: "#5e6b5a", fontWeight: 500 }}>&nbsp;news</span>
           </div>
         </div>
       </div>

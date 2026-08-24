@@ -67,9 +67,9 @@ export default async function HomePage({ searchParams }: PageProps) {
     <main className="page">
       <div className="hero">
         <span className="hero-eyebrow">Primary Sources Only</span>
-        <h1 className="hero-title">毎朝、公式発表だけを日本語で。</h1>
+        <h1 className="hero-title">公式ブログとリリースノートを、日本語の記事にして毎朝届けます。</h1>
         <p className="hero-subtitle">
-          まとめでも翻訳でもない一次情報を、興味のあるトピックだけAIが記事化。新着は毎朝メールで届きます。
+          まとめサイトの記事や機械翻訳ではなく、一次情報だけを追っています。興味のあるトピックだけ選んで読めます。
         </p>
 
         {showTrialCta && (

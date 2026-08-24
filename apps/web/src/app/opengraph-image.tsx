@@ -15,8 +15,8 @@ export default function OpengraphImage() {
           alignItems: "flex-start",
           justifyContent: "center",
           padding: "90px 100px",
-          background: "#f7f5f0",
-          fontFamily: "Georgia, serif",
+          background: "#0e1210",
+          fontFamily: "Helvetica, Arial, sans-serif",
         }}
       >
         <div
@@ -24,32 +24,29 @@ export default function OpengraphImage() {
             display: "flex",
             alignItems: "center",
             gap: 10,
-            fontFamily: "Helvetica, Arial, sans-serif",
             fontSize: 22,
             fontWeight: 700,
             letterSpacing: 4,
             textTransform: "uppercase",
-            color: "#a63e0f",
+            color: "#5ecbd0",
             marginBottom: 28,
           }}
         >
-          <div style={{ width: 40, height: 2, background: "#a63e0f" }} />
-          PRIMARY SOURCES ONLY
+          [ PRIMARY SOURCES ONLY ]
         </div>
-        <div style={{ display: "flex", fontSize: 108, fontWeight: 700, color: "#1c1a17", letterSpacing: -2 }}>
-          tech<span style={{ color: "#a63e0f" }}>/</span>ai
-          <span style={{ color: "#968f7d", fontWeight: 500 }}>&nbsp;news</span>
+        <div style={{ display: "flex", fontSize: 108, fontWeight: 700, color: "#eef1ea", letterSpacing: -2 }}>
+          tech<span style={{ color: "#ff8a3d" }}>/</span>ai
+          <span style={{ color: "#5e6b5a", fontWeight: 500 }}>&nbsp;news</span>
         </div>
         <div
           style={{
             marginTop: 32,
-            fontFamily: "Helvetica, Arial, sans-serif",
             fontSize: 30,
-            color: "#6b6355",
+            color: "#93a08f",
             maxWidth: 900,
           }}
         >
-          まとめでも翻訳でもない。公式発表を、AIが日本語でわかりやすく。
+          公式ブログとリリースノートを、日本語の記事にして毎朝届けます。
         </div>
       </div>
     ),
