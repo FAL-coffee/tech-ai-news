@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { M_PLUS_1, M_PLUS_1_Code } from "next/font/google";
@@ -116,6 +117,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             </div>
           </div>
         </footer>
+        <Analytics />
       </body>
     </html>
   );

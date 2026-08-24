@@ -15,6 +15,7 @@
     "@opennextjs/cloudflare": "latest",
     "@tech-ai-news/db": "workspace:*",
     "@tech-ai-news/shared": "workspace:*",
+    "@vercel/analytics": "latest",
     "better-auth": "latest",
     "next": "latest",
     "pg": "latest",
